@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# Maven (por si algún microservicio usa Maven)
+target/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
