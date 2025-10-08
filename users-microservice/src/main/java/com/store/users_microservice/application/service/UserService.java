@@ -23,9 +23,9 @@ public class UserService implements IUserUseCases {
 
     @Override
     public Mono<User> createUser(User user) {
-        String hashedPassword = passwordEncoder.encode(user.passwordHash()); // aquí venía en claro
+        String hashedPassword = passwordEncoder.encode(user.passwordHash()); 
         User newUser = new User(
-            UUID.randomUUID(),
+            null,
             user.firstName(),
             user.lastName(),
             user.email(),
@@ -37,7 +37,7 @@ public class UserService implements IUserUseCases {
     @Override
     public Mono<User> getUserById(UUID id) {
         return persistence.findUserById(id)
-                .switchIfEmpty(Mono.error(new UserNotFoundException(id)));
+            .switchIfEmpty(Mono.error(new UserNotFoundException(id)));
     }
 
     @Override
