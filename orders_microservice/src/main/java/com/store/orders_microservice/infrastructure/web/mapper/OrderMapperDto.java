@@ -11,7 +11,12 @@ import com.store.orders_microservice.infrastructure.web.dto.OrderResponseDto;
 public interface OrderMapperDto {
 
     @Mappings({
-        @Mapping(target = "orderId", ignore = true)
+        @Mapping(target = "orderId", ignore = true),
+        // ✅ Ignorar campos que se inicializan en el dominio
+        @Mapping(target = "total", ignore = true), 
+        @Mapping(target = "status", ignore = true),
+        @Mapping(target = "createdDate", ignore = true),
+        @Mapping(target = "updatedDate", ignore = true)
     })
     Order toDomain(OrderRequestDto requestDto);
 

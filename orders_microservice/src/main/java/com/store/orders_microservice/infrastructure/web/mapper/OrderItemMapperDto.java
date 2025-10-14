@@ -10,17 +10,8 @@ public interface OrderItemMapperDto {
 
     default OrderItem toDomain(OrderItemRequestDto dto) {
         if (dto == null) return null;
-        // Calcula subtotal directamente usando el método de dominio
         return OrderItem.create(dto.getProductId(), dto.getQuantity(), dto.getPrice());
     }
 
-    default OrderItemResponseDto toResponseDto(OrderItem orderItem) {
-        if (orderItem == null) return null;
-        return new OrderItemResponseDto(
-            orderItem.productId(),
-            orderItem.quantity(),
-            orderItem.price(),
-            orderItem.subtotal()
-        );
-    }
+    OrderItemResponseDto toDto(OrderItem orderItem);
 }

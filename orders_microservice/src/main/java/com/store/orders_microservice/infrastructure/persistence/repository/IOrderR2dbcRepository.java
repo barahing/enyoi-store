@@ -6,6 +6,6 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
 import com.store.orders_microservice.infrastructure.entity.OrderEntity;
 
-public interface IOrederR2dbcRepository extends ReactiveCrudRepository<OrderEntity, UUID> {
+public interface IOrderR2dbcRepository extends ReactiveCrudRepository<OrderEntity, UUID> {
 
 }

@@ -23,7 +23,7 @@ public class OrderEntity {
     private UUID id;
     private UUID clientId;
     private BigDecimal total;
-    @Column("satus")
+    @Column("status")
     private String status;
     @Column("created_date")
     private LocalDateTime createdDate;
