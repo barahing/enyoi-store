@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 import com.store.orders_microservice.domain.model.Order;
 import com.store.orders_microservice.domain.ports.out.IOrderPersistencePort;
-import com.store.orders_microservice.infrastructure.persistence.mapper.OrderItemMapperEntity;
-import com.store.orders_microservice.infrastructure.persistence.mapper.OrderMapperEntity;
+import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderItemMapperEntity;
+import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderMapperEntity;
 import com.store.orders_microservice.infrastructure.persistence.repository.IOrderItemR2dbcRepository;
 import com.store.orders_microservice.infrastructure.persistence.repository.IOrderR2dbcRepository;
 
@@ -18,8 +18,8 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class OrderPersistenceAdapter implements IOrderPersistencePort{
-    private final OrderMapperEntity mapper;
-    private final OrderItemMapperEntity itemMapper;
+    private final IOrderMapperEntity mapper;
+    private final IOrderItemMapperEntity itemMapper;
     private final IOrderR2dbcRepository orderRepository;
     private final IOrderItemR2dbcRepository itemRepository;
 

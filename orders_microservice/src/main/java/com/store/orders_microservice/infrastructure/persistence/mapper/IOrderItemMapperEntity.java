@@ -4,10 +4,10 @@ import java.util.List;
 
 import org.mapstruct.Mapper;
 import com.store.orders_microservice.domain.model.OrderItem;
-import com.store.orders_microservice.infrastructure.entity.OrderItemEntity;
+import com.store.orders_microservice.infrastructure.persistence.entity.OrderItemEntity;
 
 @Mapper(componentModel = "spring")
-public interface OrderItemMapperEntity {
+public interface IOrderItemMapperEntity {
     OrderItem toDomain (OrderItemEntity entity);
     OrderItemEntity toEntity (OrderItem domain);
 

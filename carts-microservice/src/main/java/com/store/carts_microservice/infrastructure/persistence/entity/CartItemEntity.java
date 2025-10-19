@@ -1,4 +1,4 @@
-package com.store.orders_microservice.infrastructure.entity;
+package com.store.carts_microservice.infrastructure.persistence.entity;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -10,14 +10,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Table("order_items")
+@Table("cart_items")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderItemEntity {
+public class CartItemEntity {
     @Id
     private UUID id;
-    private UUID orderId;  
+    private UUID cartId;
     private UUID productId;
     private Integer quantity;
     private BigDecimal price;

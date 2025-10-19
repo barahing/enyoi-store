@@ -6,11 +6,11 @@ import org.mapstruct.Named;
 
 import com.store.orders_microservice.domain.model.Order;
 import com.store.orders_microservice.domain.model.OrderStatus;
-import com.store.orders_microservice.infrastructure.entity.OrderEntity;
+import com.store.orders_microservice.infrastructure.persistence.entity.OrderEntity;
 
 
 @Mapper (componentModel = "spring")
-public interface OrderMapperEntity {
+public interface IOrderMapperEntity {
 
     @Mapping(target = "orderId", source = "id") 
     @Mapping(target = "status", source = "status", qualifiedByName = "mapStatusToEnum")
