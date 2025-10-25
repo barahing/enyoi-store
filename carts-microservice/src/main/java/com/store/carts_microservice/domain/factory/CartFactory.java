@@ -1,48 +1,32 @@
 package com.store.carts_microservice.domain.factory;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
-
-import com.store.carts_microservice.domain.exception.CartCreationException;
-import com.store.carts_microservice.domain.exception.CartCannotBeModifiedException;
 import com.store.carts_microservice.domain.model.Cart;
 import com.store.carts_microservice.domain.model.CartItem;
 import com.store.carts_microservice.domain.model.CartStatus;
 
-public final class CartFactory {
+public class CartFactory {
 
     private CartFactory() {}
 
-    public static Cart createNew(UUID clientId, List<CartItem> items) {
-        if (clientId == null)
-            throw CartCreationException.missingClientId();
-        if (items == null || items.isEmpty())
-            throw CartCreationException.emptyItems();
-
-        LocalDateTime now = LocalDateTime.now();
-
-        Cart cart = new Cart();
-        cart.setClientId(clientId);
-        cart.setItems(items);
-        cart.recalculateTotal();
-        cart.setStatus(CartStatus.ACTIVE);
-        cart.setCreatedDate(now);
-        cart.setUpdatedDate(now);
-
-        return cart;
-    }
-
-    public static Cart modifyExisting(Cart existingCart, Cart newData) {
-        if (!existingCart.isConvertible()) {
-            throw new CartCannotBeModifiedException(existingCart.getCartId(), existingCart.getStatus());
+    public static Cart createNewCart(UUID clientId) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
         }
-
-        existingCart.setClientId(newData.getClientId());
-        existingCart.setItems(newData.getItems());
-        existingCart.recalculateTotal();
-        existingCart.markUpdated();
-
-        return existingCart;
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        return new Cart(
+            UUID.randomUUID(), 
+            clientId,
+            Collections.<CartItem>emptyList(), // Lista vacía
+            BigDecimal.ZERO,
+            CartStatus.ACTIVE, // Estado por defecto
+            now,
+            now
+        );
     }
 }

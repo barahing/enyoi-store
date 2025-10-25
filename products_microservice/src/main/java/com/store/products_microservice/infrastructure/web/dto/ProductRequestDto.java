@@ -25,9 +25,9 @@ public class ProductRequestDto {
     @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than zero")
     @Digits(integer = 10, fraction = 2, message = "Price must have up to 10 integer digits and 2 decimals")
     private BigDecimal price;    
-    @NotNull(message = "Stock is required")
-    @PositiveOrZero(message = "Stock cannot be negative")
-    private Integer stock;
+    @NotNull(message = "Initial Stock is required")
+    @PositiveOrZero(message = "Initial Stock cannot be negative")
+    private Integer initialStock;
     @NotNull(message = "Category ID is required")
     private UUID categoryId;
 }

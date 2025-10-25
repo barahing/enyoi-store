@@ -1,5 +1,7 @@
 package com.store.products_microservice.domain.model;
 
+import com.store.products_microservice.domain.exception.InconsistentStockException;
+import com.store.products_microservice.domain.exception.NotEnoughStockException;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -8,31 +10,68 @@ public record Product(
     String name,
     String description,
     BigDecimal price,
-    Integer stock,
+    int stockAvailable,
+    int stockReserved,
     UUID categoryId
 ) {
-
-    public Product withStock(Integer newStock) {
-        if (newStock == null || newStock < 0) {
-            throw new IllegalArgumentException("Stock cannot be negative or empty");
-        }
-        return new Product(id, name, description, price, newStock, categoryId);
+    public boolean canReserve(int amount) {
+        return this.stockAvailable >= amount;
     }
 
-    public Product increaseStock(int amount) {
+    public Product reserveStock(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Increase amount must be higher than 0");
+            throw new IllegalArgumentException("Amount to reserve must be positive");
         }
-        return withStock(this.stock + amount);
+        if (!canReserve(amount)) {
+            throw new NotEnoughStockException("Not enough stock available for product: " + id);
+        }
+        
+        return new Product(
+            this.id, 
+            this.name, 
+            this.description, 
+            this.price, 
+            this.stockAvailable - amount, 
+            this.stockReserved + amount,  
+            this.categoryId
+        );
     }
 
-    public Product decreaseStock(int amount) {
+    public Product releaseStock(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Decrease amount must be higher than 0");
+            throw new IllegalArgumentException("Amount to release must be positive");
         }
-        if (this.stock < amount) {
-            throw new IllegalArgumentException("Not enough stock");
+        if (this.stockReserved < amount) {
+            throw new InconsistentStockException("Cannot release more stock than reserved for product: " + id);
         }
-        return withStock(this.stock - amount);
+        
+        return new Product(
+            this.id,
+            this.name,
+            this.description,
+            this.price,
+            this.stockAvailable + amount, 
+            this.stockReserved - amount,  
+            this.categoryId
+        );
+    }
+
+    public Product confirmStockSale(int amount) {
+         if (amount <= 0) {
+            throw new IllegalArgumentException("Amount to confirm must be positive");
+        }
+        if (this.stockReserved < amount) {
+             throw new InconsistentStockException("Cannot confirm sale of more stock than reserved for product: " + id);
+        }
+        
+        return new Product(
+            this.id,
+            this.name,
+            this.description,
+            this.price,
+            this.stockAvailable, 
+            this.stockReserved - amount,  
+            this.categoryId
+        );
     }
 }

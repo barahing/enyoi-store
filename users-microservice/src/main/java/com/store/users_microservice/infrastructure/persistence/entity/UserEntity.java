@@ -23,4 +23,5 @@ public class UserEntity {
     private String lastName;
     private String email;
     private String passwordHash;
+    private String role;
 }

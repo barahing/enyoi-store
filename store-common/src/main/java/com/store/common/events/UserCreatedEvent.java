@@ -1,13 +1,13 @@
-package main.java.com.store.common.events;
+package com.store.common.events;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serializable;
 import java.util.UUID;
-import lombok.*;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class UserCreatedEvent {
-    private UUID userId;
-    private String email;
-}
+public record UserCreatedEvent(
+    @JsonProperty("userId") UUID userId,
+    @JsonProperty("email") String email,
+    @JsonProperty("firstName") String firstName, 
+    @JsonProperty("lastName") String lastName,
+    @JsonProperty("role") String role 
+) implements Serializable {}

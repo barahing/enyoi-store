@@ -3,42 +3,80 @@ package com.store.products_microservice.application.service;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import com.store.products_microservice.domain.exception.ProductNotFoundException;
+import com.store.products_microservice.domain.exception.NotEnoughStockException;
 import com.store.products_microservice.domain.model.Product;
-import com.store.products_microservice.domain.ports.in.IInventoryUseCases;
-import com.store.products_microservice.domain.ports.out.IProductPersistencePort;
+import com.store.products_microservice.domain.ports.in.IStockManagementPort;
+import com.store.products_microservice.domain.ports.out.IProductRepositoryPort;
+import com.store.common.events.ReserveStockCommand;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
-public class InventoryService implements IInventoryUseCases {
+public class InventoryService implements IStockManagementPort {
 
-    private final IProductPersistencePort persistence;
+    private final IProductRepositoryPort productRepository;
 
     @Override
     public Mono<Void> increaseStock(UUID productId, int quantity) {
-        return persistence.findProductById(productId)
+        if (quantity <= 0) {
+            return Mono.error(new IllegalArgumentException("Quantity must be positive"));
+        }
+        return productRepository.findById(productId)
             .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
             .flatMap(product -> {
-                Product updated = product.increaseStock(quantity);
-                return persistence.updateProduct(productId, updated).then();
+                // Para una operación administrativa de "restock", actualizamos el stockAvailable directamente.
+                Product updated = new Product(
+                    product.id(),
+                    product.name(),
+                    product.description(),
+                    product.price(),
+                    product.stockAvailable() + quantity,
+                    product.stockReserved(),
+                    product.categoryId()
+                );
+                return productRepository.save(updated).then();
             });
     }
 
     @Override
     public Mono<Void> decreaseStock(UUID productId, int quantity) {
-        return persistence.findProductById(productId)
+        if (quantity <= 0) {
+            return Mono.error(new IllegalArgumentException("Quantity must be positive"));
+        }
+        return productRepository.findById(productId)
             .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
             .flatMap(product -> {
-                Product updated = product.decreaseStock(quantity);
-                return persistence.updateProduct(productId, updated).then();
+                int newStockAvailable = product.stockAvailable() - quantity;
+                
+                if (newStockAvailable < 0) {
+                    return Mono.error(new NotEnoughStockException("Not enough available stock for administrative decrease."));
+                }
+                
+                // Para una operación administrativa de "descarte", actualizamos el stockAvailable.
+                Product updated = new Product(
+                    product.id(),
+                    product.name(),
+                    product.description(),
+                    product.price(),
+                    newStockAvailable,
+                    product.stockReserved(),
+                    product.categoryId()
+                );
+                return productRepository.save(updated).then();
             });
     }
 
     @Override
-    public Mono<Boolean> isInStock(UUID productId, int requiredQuantity) {
-        return persistence.findProductById(productId)
-            .map(product -> product.stock() >= requiredQuantity)
+    public Mono<Boolean> checkStockAvailability(UUID productId, int requiredQuantity) {
+        return productRepository.findById(productId)
+            .map(product -> product.canReserve(requiredQuantity))
             .defaultIfEmpty(false);
+    }
+
+    @Override
+    public Mono<Void> handleStockReservation(ReserveStockCommand command) {
+        // Implementación de la saga asíncrona pendiente. Usaremos la versión que usa múltiples productos.
+        return Mono.empty();
     }
 }
