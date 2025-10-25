@@ -43,3 +43,7 @@ management:
       show-details: always
       probes:
         enabled: true
+logging:
+  level:
+    org.springframework.amqp: INFO
+    com.store: DEBUG

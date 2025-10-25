@@ -4,50 +4,66 @@ import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import com.store.common.events.UserCreatedEvent;
 import com.store.users_microservice.domain.exception.UserNotFoundException;
 import com.store.users_microservice.domain.model.User;
-import com.store.users_microservice.domain.ports.in.IUserUseCases;
-import com.store.users_microservice.domain.ports.out.IUserPersistencePort;
-
+import com.store.users_microservice.domain.ports.in.IUserServicePort;
+import com.store.users_microservice.domain.ports.out.IUserRepositoryPort;
+import com.store.users_microservice.domain.ports.out.IUserEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
-public class UserService implements IUserUseCases {
+public class UserService implements IUserServicePort {
 
-    private final IUserPersistencePort persistence;
+    private final IUserRepositoryPort userRepository; 
+    private final IUserEventPublisherPort userEventPublisherPort; 
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public Mono<User> createUser(User user) {
-        String hashedPassword = passwordEncoder.encode(user.passwordHash()); 
-        User newUser = new User(
+        String hashedPassword = passwordEncoder.encode(user.passwordHash());
+        
+        User newUserWithHash = new User(
             null,
             user.firstName(),
             user.lastName(),
             user.email(),
-            hashedPassword
+            hashedPassword,
+            user.role() 
         );
-        return persistence.saveUser(newUser);
+        
+        return userRepository.save(newUserWithHash)
+            .flatMap(savedUser -> {
+                UserCreatedEvent event = new UserCreatedEvent(
+                    savedUser.id(),
+                    savedUser.email(),
+                    savedUser.firstName(),
+                    savedUser.lastName(),
+                    savedUser.role().name() 
+                );
+                
+                return userEventPublisherPort.publishUserCreated(event)
+                    .thenReturn(savedUser); 
+            });
     }
 
     @Override
     public Mono<User> getUserById(UUID id) {
-        return persistence.findUserById(id)
+        return userRepository.findById(id)
             .switchIfEmpty(Mono.error(new UserNotFoundException(id)));
     }
 
     @Override
     public Flux<User> getAllUsers() {
-        return persistence.findAllUsers();
+        return userRepository.findAll();
     }
 
     @Override
     public Mono<User> updateUser(UUID id, User user) {
-        return persistence.findUserById(id)
+        return userRepository.findById(id)
             .switchIfEmpty(Mono.error(new UserNotFoundException(id)))
             .flatMap(existingUser -> {
                 String finalPasswordHash = user.passwordHash() != null ? passwordEncoder.encode(user.passwordHash()) : existingUser.passwordHash(); 
@@ -57,17 +73,19 @@ public class UserService implements IUserUseCases {
                     user.firstName() != null ? user.firstName() : existingUser.firstName(),
                     user.lastName()  != null ? user.lastName()  : existingUser.lastName(),
                     user.email()     != null ? user.email()     : existingUser.email(),
-                    finalPasswordHash
+                    finalPasswordHash,
+                    existingUser.role() 
                 );
-                return persistence.updateUser(id, updatedUser);
+                
+                return userRepository.update(id, updatedUser);
             });
     }
 
 
     @Override
     public Mono<Void> deleteUser(UUID id) {
-        return persistence.findUserById(id)
-                .switchIfEmpty(Mono.error(new UserNotFoundException(id)))
-                .flatMap(u -> persistence.deleteUser(id));
+        return userRepository.findById(id)
+            .switchIfEmpty(Mono.error(new UserNotFoundException(id)))
+            .flatMap(u -> userRepository.deleteById(id));
     }
 }

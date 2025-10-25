@@ -1,11 +1,12 @@
 package com.store.products_microservice.infrastructure.persistence.adapter;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
 import com.store.products_microservice.domain.model.Product;
-import com.store.products_microservice.domain.ports.out.IProductPersistencePort;
+import com.store.products_microservice.domain.ports.out.IProductRepositoryPort; 
 import com.store.products_microservice.infrastructure.persistence.mapper.ProductMapperEntity;
 import com.store.products_microservice.infrastructure.persistence.repository.IProductR2dbcRepository;
 
@@ -15,33 +16,44 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class ProductPersistenceAdapter implements IProductPersistencePort {
+public class ProductPersistenceAdapter implements IProductRepositoryPort { // Implementa el nuevo puerto
     private final IProductR2dbcRepository productRepository;
     private final ProductMapperEntity mapper;
 
-    
-    public Mono<Product> saveProduct(Product product) {
+    @Override
+    public Mono<Product> save(Product product) {
         return productRepository.save(mapper.toEntity(product)).map(mapper::toDomain);
     }
 
     @Override
-    public Mono<Product> findProductById(UUID id) {
+    public Mono<Product> findById(UUID id) {
         return productRepository.findById(id).map(mapper::toDomain);
     }
 
     @Override
-    public Flux<Product> findAllProducts() {
+    public Flux<Product> findAll() {
         return productRepository.findAll().map(mapper::toDomain);
     }
 
     @Override
-    public Mono<Product> updateProduct(UUID id, Product product) {
+    public Mono<Product> update(UUID id, Product product) {
         return productRepository.save(mapper.toEntity(product)).map(mapper::toDomain);
     }
 
     @Override
-    public Mono<Void> deleteProduct(UUID id) {
+    public Mono<Void> deleteById(UUID id) {
         return productRepository.deleteById(id);
     }
 
+    @Override
+    public Flux<Product> findByIds(List<UUID> ids) {
+        // ASUMIMOS que el repositorio tiene un método para buscar por lista de IDs
+        return productRepository.findAllById(ids).map(mapper::toDomain);
+    }
+
+    @Override
+    public Flux<Product> saveAll(Flux<Product> products) {
+        // Mapea a entidades y usa el método saveAll reactivo del repositorio
+        return productRepository.saveAll(products.map(mapper::toEntity)).map(mapper::toDomain);
+    }
 }

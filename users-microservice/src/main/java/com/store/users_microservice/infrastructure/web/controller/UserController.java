@@ -2,7 +2,7 @@ package com.store.users_microservice.infrastructure.web.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.store.users_microservice.domain.ports.in.IUserUseCases;
+import com.store.users_microservice.domain.ports.in.IUserServicePort;
 import com.store.users_microservice.infrastructure.web.dto.UserRequestDto;
 import com.store.users_microservice.infrastructure.web.dto.UserResponseDto;
 import com.store.users_microservice.infrastructure.web.mapper.UserMapperDto;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
-    private final IUserUseCases userUseCases;
+    private final IUserServicePort userUseCases;
     private final UserMapperDto userMapper;
 
     @GetMapping()

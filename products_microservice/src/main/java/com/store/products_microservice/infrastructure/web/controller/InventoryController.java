@@ -4,7 +4,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.store.products_microservice.domain.ports.in.IInventoryUseCases;
+// Importamos el nuevo puerto
+import com.store.products_microservice.domain.ports.in.IStockManagementPort; 
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -23,7 +24,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
 public class InventoryController {
-    private final IInventoryUseCases inventoryUseCases;
+    
+    // Inyectamos el nuevo puerto de entrada
+    private final IStockManagementPort inventoryUseCases; 
 
     @PostMapping("/{productId}/increase/{quantity}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -39,7 +42,8 @@ public class InventoryController {
 
     @GetMapping("/{productId}/check/{quantity}")
     public Mono<ResponseEntity<Map<String, Object>>> check (@PathVariable UUID productId, @PathVariable int quantity) {
-        return inventoryUseCases.isInStock(productId, quantity)
+        // Renombramos el método isInStock a checkStockAvailability
+        return inventoryUseCases.checkStockAvailability(productId, quantity) 
             .map(inStock -> ResponseEntity.ok(Map.of(
                 "productId", productId,
                 "available", inStock,

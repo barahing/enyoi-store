@@ -10,6 +10,9 @@ spring:
 
   application:
     name: carts-service
+  
+  main: 
+    allow-bean-definition-overriding: true
 
   sql:
     init:
@@ -43,3 +46,4 @@ management:
       show-details: always
       probes:
         enabled: true
+

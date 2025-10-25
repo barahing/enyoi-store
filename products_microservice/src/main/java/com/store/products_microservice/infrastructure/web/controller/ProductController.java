@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
-import com.store.products_microservice.domain.ports.in.IProductUseCases;
+
+// Importamos el puerto renombrado
+import com.store.products_microservice.domain.ports.in.IProductServicePort; 
 import com.store.products_microservice.infrastructure.web.dto.ProductRequestDto;
 import com.store.products_microservice.infrastructure.web.dto.ProductResponseDto;
 import com.store.products_microservice.infrastructure.web.mapper.ProductMapperDto;
@@ -27,12 +29,14 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
-    private final IProductUseCases productUseCases;
+    
+    // Inyectamos el puerto renombrado
+    private final IProductServicePort productUseCases; 
     private final ProductMapperDto productMapper;
 
     @GetMapping()
     public Flux<ProductResponseDto> findAll() {
-        return productUseCases.getAllProduct()
+        return productUseCases.getAllProducts()
                 .map(productMapper::toResponseDto);
     }
 
@@ -44,13 +48,15 @@ public class ProductController {
 
     @PutMapping("/{productId}")
     public Mono<ProductResponseDto> updateProduct(@Valid @PathVariable("productId") UUID productId, @RequestBody ProductRequestDto product) {
+        // El mapper debe encargarse de no enviar stock, o el UseCase lo ignorará (como lo hace ahora)
         return productUseCases.updateProduct(productId, productMapper.toDomain(product))
                 .map(productMapper::toResponseDto);
     }
 
     @PostMapping()
     public Mono<ProductResponseDto> createProduct(@Valid @RequestBody ProductRequestDto product) {
-        return productUseCases.createProduct(productMapper.toDomain(product))
+        // El mapper debe usar la ProductFactory para crear el dominio
+        return productUseCases.createProduct(productMapper.toDomain(product)) 
                 .map(productMapper::toResponseDto);
     }
 

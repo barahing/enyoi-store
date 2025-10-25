@@ -2,6 +2,7 @@ package com.store.carts_microservice.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +20,16 @@ public class Cart {
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
 
+    public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total, CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate) {
+        this.cartId = cartId;
+        this.clientId = clientId;
+        this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
+        this.total = total;
+        this.status = status;
+        this.createdDate = createdDate;
+        this.updatedDate = updatedDate;
+    }
+
     public void addItem(CartItem item) {
         if (this.items == null) throw new IllegalStateException("Cart not initialized");
         this.items.add(item);
@@ -32,6 +43,25 @@ public class Cart {
         markUpdated();
     }
 
+    public void updateItemQuantity(UUID productId, int newQuantity) {
+        if (this.items == null) throw new IllegalStateException("Cart not initialized");
+        if (newQuantity <= 0) {
+             removeItem(productId);
+             return;
+        }
+
+        for (int i = 0; i < items.size(); i++) {
+            CartItem item = items.get(i);
+            if (item.productId().equals(productId)) {
+                items.set(i, item.withUpdatedQuantity(newQuantity));
+                recalculateTotal();
+                markUpdated();
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Product not found in cart: " + productId);
+    }
+    
     public void recalculateTotal() {
         this.total = items.stream()
                 .map(CartItem::subtotal)

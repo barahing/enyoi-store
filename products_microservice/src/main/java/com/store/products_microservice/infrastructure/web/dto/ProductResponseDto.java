@@ -15,6 +15,7 @@ public class ProductResponseDto {
     private String name;
     private String description;
     private BigDecimal price;
-    private Integer stock;
+    private Integer stockAvailable;
+    private Integer stockReserved;
     private UUID categoryId;
 }
