@@ -10,13 +10,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConsumerConfig {
 
-    // Exchange del servicio de usuarios (debe coincidir con el productor)
     public static final String USER_EXCHANGE_NAME = "user-exchange";
-    
-    // Cola específica para el microservicio de carritos
+   
     public static final String CART_CREATION_QUEUE_NAME = "cart.creation.queue";
     
-    // Routing Key del evento publicado por users-service
     public static final String USER_CREATED_ROUTING_KEY = "user.created.event";
 
     @Bean

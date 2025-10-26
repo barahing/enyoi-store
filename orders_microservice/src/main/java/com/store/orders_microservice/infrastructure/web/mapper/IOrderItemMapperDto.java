@@ -6,7 +6,7 @@ import com.store.orders_microservice.infrastructure.web.dto.OrderItemRequestDto;
 import com.store.orders_microservice.infrastructure.web.dto.OrderItemResponseDto;
 
 @Mapper(componentModel = "spring")
-public interface OrderItemMapperDto {
+public interface IOrderItemMapperDto { 
 
     default OrderItem toDomain(OrderItemRequestDto dto) {
         if (dto == null) return null;

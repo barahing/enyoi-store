@@ -5,9 +5,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import com.store.orders_microservice.domain.model.Order;
-import com.store.orders_microservice.domain.ports.out.IOrderPersistencePort;
-import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderItemMapperEntity;
-import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderMapperEntity;
+import com.store.orders_microservice.domain.ports.out.IOrderRepositoryPort;
+import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderItemEntityMapper;
+import com.store.orders_microservice.infrastructure.persistence.mapper.IOrderEntityMapper;
 import com.store.orders_microservice.infrastructure.persistence.repository.IOrderItemR2dbcRepository;
 import com.store.orders_microservice.infrastructure.persistence.repository.IOrderR2dbcRepository;
 
@@ -17,20 +17,29 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class OrderPersistenceAdapter implements IOrderPersistencePort{
-    private final IOrderMapperEntity mapper;
-    private final IOrderItemMapperEntity itemMapper;
+public class OrderPersistenceAdapter implements IOrderRepositoryPort{
+    private final IOrderEntityMapper mapper;
+    private final IOrderItemEntityMapper itemMapper;
     private final IOrderR2dbcRepository orderRepository;
     private final IOrderItemR2dbcRepository itemRepository;
 
-   
+    
     @Override
-    public Mono<Order> saveOrder(Order order) {
+    public Mono<Order> save(Order order) {
+        
+        Mono<Void> itemCleanup;
+        if (order.getOrderId() != null) {
+            itemCleanup = itemRepository.deleteAllByOrderId(order.getOrderId());
+        } else {
+            itemCleanup = Mono.empty();
+        }
+        
         return orderRepository.save(mapper.toEntity(order))
             .flatMap(savedEntity -> {
                 UUID orderId = savedEntity.getId();
-
-                return Flux.fromIterable(order.getItems())
+                
+                return itemCleanup
+                    .thenMany(Flux.fromIterable(order.getItems()))
                     .map(item -> {
                         var entity = itemMapper.toEntity(item);
                         entity.setOrderId(orderId);
@@ -38,22 +47,23 @@ public class OrderPersistenceAdapter implements IOrderPersistencePort{
                     })
                     .collectList()
                     .flatMapMany(itemRepository::saveAll)
-                    .then(itemRepository.findByOrderId(orderId)      // 🔹 recupera los ítems recién guardados
-                        .map(itemMapper::toDomain)
-                        .collectList()
-                        .map(savedItems -> {
-                            Order domainOrder = mapper.toDomain(savedEntity);
-                            domainOrder.setItems(savedItems);        // 🔹 asocia los ítems
-                            domainOrder.recalculateTotal();          // 🔹 recalcula total
-                            return domainOrder;
-                        })
-                    );
-            });
+                    .collectList()
+                    .thenReturn(savedEntity);
+            })
+            .flatMap(savedEntity -> 
+                itemRepository.findByOrderId(savedEntity.getId())
+                    .map(itemMapper::toDomain)
+                    .collectList()
+                    .map(savedItems -> {
+                        Order domainOrder = mapper.toDomain(savedEntity);
+                        domainOrder.setItems(savedItems); 
+                        return domainOrder;
+                    })
+            );
     }
 
-
     @Override
-    public Mono<Order> findOrderById(UUID id) {
+    public Mono<Order> findById(UUID id) {
         return orderRepository.findById(id)
             .flatMap(orderEntity ->
                 itemRepository.findByOrderId(orderEntity.getId())
@@ -62,14 +72,13 @@ public class OrderPersistenceAdapter implements IOrderPersistencePort{
                     .map(items -> {
                         Order order = mapper.toDomain(orderEntity);
                         order.setItems(items);
-                        order.recalculateTotal();
                         return order;
                     })
             );
     }
 
     @Override
-    public Flux<Order> findAllOrders() {
+    public Flux<Order> findAll() {
         return orderRepository.findAll()
             .flatMap(orderEntity ->
                 itemRepository.findByOrderId(orderEntity.getId())
@@ -78,34 +87,14 @@ public class OrderPersistenceAdapter implements IOrderPersistencePort{
                     .map(items -> {
                         Order order = mapper.toDomain(orderEntity);
                         order.setItems(items);
-                        order.recalculateTotal();
                         return order;
                     })
             );
     }
 
-
-    @Override
-    public Mono<Order> updateOrder(Order order) {
-        return orderRepository.save(mapper.toEntity(order))
-            .flatMap(savedEntity -> {
-                UUID orderId = savedEntity.getId();
-                return itemRepository.findByOrderId(orderId)
-                    .flatMap(existing -> itemRepository.deleteById(existing.getId()))
-                    .thenMany(Flux.fromIterable(order.getItems()))
-                    .map(itemMapper::toEntity)
-                    .doOnNext(item -> item.setOrderId(orderId))
-                    .collectList()
-                    .flatMapMany(itemRepository::saveAll)
-                    .then(Mono.just(savedEntity));
-            })
-            .map(mapper::toDomain);
-    }
-
-
-    @Override
-    public Mono<Void> deleteOrder(UUID id) {
+ 
+    //@Override 
+    /*public Mono<Void> deleteById(UUID id) {
         return orderRepository.deleteById(id);
-    }
-
+    }*/
 }
