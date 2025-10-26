@@ -1,20 +1,25 @@
 package com.store.orders_microservice.infrastructure.web.controller;
 
-import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import com.store.orders_microservice.application.exception.OrderNotFoundException;
-import com.store.orders_microservice.domain.ports.in.IOrderUseCases;
-import com.store.orders_microservice.infrastructure.web.dto.OrderRequestDto;
-import com.store.orders_microservice.infrastructure.web.dto.OrderResponseDto;
-import com.store.orders_microservice.infrastructure.web.dto.OrderItemRequestDto;
-import com.store.orders_microservice.infrastructure.web.mapper.OrderItemMapperDto;
-import com.store.orders_microservice.infrastructure.web.mapper.OrderMapperDto;
 import org.springframework.http.HttpStatus;
-import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.store.orders_microservice.domain.ports.in.IOrderServicePort;
+import com.store.orders_microservice.infrastructure.web.dto.OrderItemRequestDto;
+import com.store.orders_microservice.infrastructure.web.dto.OrderResponseDto;
+import com.store.orders_microservice.infrastructure.web.mapper.IOrderMapperDto;
+import com.store.orders_microservice.infrastructure.web.mapper.IOrderItemMapperDto;
+
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,101 +27,86 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Validated
 public class OrderController {
+    
+    private final IOrderServicePort orderServicePort;
+    private final IOrderMapperDto orderMapper;
+    private final IOrderItemMapperDto orderItemMapper;
 
-    private final IOrderUseCases orderUseCases;
-    private final OrderMapperDto orderMapper;
-    private final OrderItemMapperDto orderItemMapper;
-
-    @PostMapping
-    public Mono<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequestDto orderRequestDto){
-        return orderUseCases.createOrder(orderMapper.toDomain(orderRequestDto))
-            .map(orderMapper::toResponseDto);
+    @GetMapping("/{orderId}")
+    public Mono<OrderResponseDto> getOrderById(@PathVariable UUID orderId) {
+        return orderServicePort.getOrderById(orderId)
+                .map(orderMapper::toResponseDto);
     }
 
     @GetMapping
     public Flux<OrderResponseDto> getAllOrders() {
-        return orderUseCases.getAllOrders()
-            .map (orderMapper::toResponseDto);
+        return orderServicePort.getAllOrders()
+                .map(orderMapper::toResponseDto);
     }
-
-    @GetMapping("/{orderId}")
-    public Mono<OrderResponseDto> getOrderById(@PathVariable UUID orderId){
-        return orderUseCases.getOrderById(orderId)
-            .map(orderMapper::toResponseDto);
-            
-    }
-
-   @PutMapping("/{orderId}/modify")
-    public Mono<ResponseEntity<OrderResponseDto>> modifyOrder(
-        @PathVariable UUID orderId,
-        @Valid @RequestBody OrderRequestDto orderRequestDto) {
-
-    return orderUseCases.modifyOrder(orderId, orderMapper.toDomain(orderRequestDto))
-            .map(orderMapper::toResponseDto)
-            .map(ResponseEntity::ok)
-            .onErrorResume(OrderNotFoundException.class, e ->
-                    Mono.just(ResponseEntity.notFound().build()));
-}
-
-    @PutMapping("/{orderId}")
-    public Mono<OrderResponseDto> updateOrder(@PathVariable UUID orderId,@Valid @RequestBody OrderRequestDto orderRequestDto){
-        return orderUseCases.updateOrder(orderId, orderMapper.toDomain(orderRequestDto))
-            .map(orderMapper::toResponseDto);
-    }
-
     
-    @PatchMapping("/{orderId}/confirm")
-    public Mono<OrderResponseDto> confirmOrder(@PathVariable UUID orderId){
-        return orderUseCases.confirmOrder(orderId)
-        .map(orderMapper::toResponseDto);
-    }
-
-    @PatchMapping("/{orderId}/ship")
-    public Mono<OrderResponseDto> shipOrder(@PathVariable UUID orderId){
-        return orderUseCases.shipOrder(orderId)
-        .map(orderMapper::toResponseDto);        
-    }
-
-    @PatchMapping("/{orderId}/deliver")
-    public Mono<OrderResponseDto> deliverOrder(@PathVariable UUID orderId){
-        return orderUseCases.deliverOrder(orderId)
-        .map(orderMapper::toResponseDto);        
-    }
-
-    @PatchMapping("/{orderId}/cancel")
-    public Mono<OrderResponseDto> cancelOrder(@PathVariable UUID orderId){
-        return orderUseCases.cancelOrder(orderId)
-        .map(orderMapper::toResponseDto);        
-    }
-
-    // 🔹 Eliminar una orden
-    @DeleteMapping("/{orderId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Mono<ResponseEntity<Map<String, String>>> deleteOrder(@PathVariable UUID orderId){
-        return orderUseCases.deleteOrder(orderId)
-            .thenReturn(ResponseEntity.ok(Map.of("order", "deleted", "id", orderId.toString())));
-    }
-
-    @PatchMapping("/{orderId}/items")
-    public Mono<OrderResponseDto> addItemToOrder(@PathVariable UUID orderId, @Valid @RequestBody OrderItemRequestDto itemRequestDto){
-        return orderUseCases.getOrderById(orderId)
-            .flatMap (order -> {
-                order.addItem(orderItemMapper.toDomain(itemRequestDto));
-                return orderUseCases.updateOrder(orderId, order);
-            })
-            .map(orderMapper::toResponseDto);
-
-    }
-
-    @DeleteMapping("/{orderId}/items/{productId}")
-    public Mono<OrderResponseDto> removeItemFromOrder(@PathVariable UUID orderId, @PathVariable UUID productId) {
-        return orderUseCases.getOrderById(orderId)
-                .flatMap(order -> {
-                    order.removeItem(productId);
-                    return orderUseCases.updateOrder(orderId, order);
-                })
+    @PutMapping("/{orderId}/confirm")
+    public Mono<OrderResponseDto> confirmOrder(@PathVariable UUID orderId) {
+        return orderServicePort.confirmOrder(orderId)
                 .map(orderMapper::toResponseDto);
     }
 
+    @PutMapping("/{orderId}/ship")
+    public Mono<OrderResponseDto> shipOrder(@PathVariable UUID orderId) {
+        return orderServicePort.shipOrder(orderId)
+                .map(orderMapper::toResponseDto);
+    }
+
+    @PutMapping("/{orderId}/deliver")
+    public Mono<OrderResponseDto> deliverOrder(@PathVariable UUID orderId) {
+        return orderServicePort.deliverOrder(orderId)
+                .map(orderMapper::toResponseDto);
+    }
+
+    @PutMapping("/{orderId}/cancel")
+    public Mono<OrderResponseDto> cancelOrder(@PathVariable UUID orderId) {
+        return orderServicePort.cancelOrder(orderId)
+                .map(orderMapper::toResponseDto);
+    }
+    
+    @PostMapping("/{orderId}/items")
+    public Mono<OrderResponseDto> addItemToOrder(
+            @PathVariable UUID orderId,
+            @RequestBody @Validated OrderItemRequestDto itemDto) {
+        
+        return orderServicePort.addProductToOrder(
+                        orderId, 
+                        orderItemMapper.toDomain(itemDto)
+                    )
+                    .map(orderMapper::toResponseDto);
+    }
+
+    @PutMapping("/{orderId}/items/{productId}")
+    public Mono<OrderResponseDto> updateItemQuantity(
+            @PathVariable UUID orderId,
+            @PathVariable UUID productId,
+            @RequestBody @Validated OrderItemRequestDto itemDto) {
+        
+        return orderServicePort.updateItemQuantity(
+                        orderId, 
+                        productId, 
+                        itemDto.getQuantity()
+                    )
+                    .map(orderMapper::toResponseDto);
+    }
+
+    @DeleteMapping("/{orderId}/items/{productId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> removeItemFromOrder(
+            @PathVariable UUID orderId,
+            @PathVariable UUID productId) {
+        return orderServicePort.removeProductFromOrder(orderId, productId).then();
+    }
+    
+    /*@DeleteMapping("/{orderId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> hardDeleteOrder(@PathVariable UUID orderId) {
+        return orderServicePort.deleteOrder(orderId);
+    }*/
 }

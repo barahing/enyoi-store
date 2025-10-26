@@ -1,6 +1,7 @@
 package com.store.carts_microservice.application.service;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -10,6 +11,8 @@ import com.store.carts_microservice.domain.model.CartItem;
 import com.store.carts_microservice.domain.ports.in.ICartServicePort;
 import com.store.carts_microservice.domain.ports.out.ICartRepositoryPort;
 import com.store.carts_microservice.domain.ports.out.ICartEventPublisherPort;
+import com.store.common.events.CartConvertedEvent;
+import com.store.common.events.CartConvertedEvent.CartItemData;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -20,16 +23,16 @@ public class CartService implements ICartServicePort {
 
     private final ICartRepositoryPort cartRepository;
     private final ICartEventPublisherPort eventPublisher;
-
+    
     @Override
     public Mono<Cart> createCartForClient(UUID clientId) {
         return cartRepository.findActiveCartByClientId(clientId)
                 .switchIfEmpty(
                     Mono.fromCallable(() -> CartFactory.createNewCart(clientId))
-                        .flatMap(cartRepository::save) 
+                        .flatMap(cartRepository::save)
                 );
     }
-
+    
     @Override
     public Mono<Cart> getActiveCartByClientId(UUID clientId) {
         return cartRepository.findActiveCartByClientId(clientId)
@@ -41,6 +44,7 @@ public class CartService implements ICartServicePort {
         return cartRepository.findById(cartId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Cart not found.")))
                 .map(cart -> {
+                    // Lógica de negocio para añadir o actualizar el item
                     cart.addItem(newItem);
                     return cart;
                 })
@@ -82,14 +86,30 @@ public class CartService implements ICartServicePort {
                     if (!cart.isConvertible()) {
                         return Mono.error(new IllegalStateException("Cart is not convertible (Status: " + cart.getStatus() + ")."));
                     }
+                    
+                    // 1. Marcar el carrito como convertido y persistir el cambio
                     cart.markAsConverted();
                     return cartRepository.save(cart)
-                            .doOnNext(savedCart -> {
-                                // 3. Publicar el evento para que orders-service cree la orden
-                                // Aquí se construiría CartConvertedEvent a partir de savedCart
-                                // eventPublisher.publishCartConverted(eventDto).subscribe();
-                            })
-                            .thenReturn(cart);
+                            .flatMap(savedCart -> {
+                                // 2. Construir el evento DTO
+                                CartConvertedEvent eventDto = new CartConvertedEvent(
+                                    savedCart.getCartId(),
+                                    savedCart.getClientId(),
+                                    savedCart.getTotal(),
+                                    savedCart.getUpdatedDate(),
+                                    savedCart.getItems().stream()
+                                            .map(item -> new CartItemData(
+                                                item.productId(),
+                                                item.quantity(),
+                                                item.price(),
+                                                item.subtotal()
+                                            ))
+                                            .collect(Collectors.toList())
+                                );
+                                
+                                // 3. Publicar el evento de manera asíncrona
+                                return eventPublisher.publishCartConverted(eventDto).thenReturn(savedCart);
+                            });
                 });
     }
 }

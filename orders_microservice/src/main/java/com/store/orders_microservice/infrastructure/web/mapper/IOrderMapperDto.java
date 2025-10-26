@@ -7,20 +7,18 @@ import com.store.orders_microservice.domain.model.Order;
 import com.store.orders_microservice.infrastructure.web.dto.OrderRequestDto;
 import com.store.orders_microservice.infrastructure.web.dto.OrderResponseDto;
 
-@Mapper(componentModel = "spring", uses = { OrderItemMapperDto.class })
-public interface OrderMapperDto {
+@Mapper(componentModel = "spring", uses = { IOrderItemMapperDto.class }) 
+public interface IOrderMapperDto {
 
     @Mappings({
         @Mapping(target = "orderId", ignore = true),
-        // ✅ Ignorar campos que se inicializan en el dominio
         @Mapping(target = "total", ignore = true), 
         @Mapping(target = "status", ignore = true),
         @Mapping(target = "createdDate", ignore = true),
-        @Mapping(target = "updatedDate", ignore = true)
+        @Mapping(target = "updatedDate", ignore = true),
+        @Mapping(target = "items", source = "items") 
     })
     Order toDomain(OrderRequestDto requestDto);
 
     OrderResponseDto toResponseDto(Order order);
-
-    //List<OrderItemResponseDto> toItemResponseDtos(List<OrderItem> items);
 }

@@ -1,12 +1,17 @@
 package com.store.orders_microservice.application.service;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
-import com.store.orders_microservice.application.exception.OrderNotFoundException;
-import com.store.orders_microservice.domain.factory.OrderFactory;
+
+import com.store.common.events.CartConvertedEvent;
+import com.store.orders_microservice.domain.factory.OrderFactory; 
 import com.store.orders_microservice.domain.model.Order;
-import com.store.orders_microservice.domain.ports.in.IOrderUseCases;
-import com.store.orders_microservice.domain.ports.out.IOrderPersistencePort;
+import com.store.orders_microservice.domain.model.OrderItem;
+import com.store.orders_microservice.domain.ports.in.IOrderServicePort;
+import com.store.orders_microservice.domain.ports.out.IOrderRepositoryPort;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
@@ -14,98 +19,98 @@ import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
-public class OrderService implements IOrderUseCases{
-    private final IOrderPersistencePort persistence;
+public class OrderService implements IOrderServicePort {
 
+    private final IOrderRepositoryPort orderRepository;
 
     @Override
-    public Mono<Order> createOrder(Order order) {
-        Order newOrder = OrderFactory.createNew(order.getClientId(), order.getItems());
-        return persistence.saveOrder(newOrder);
+    public Mono<Order> createOrderFromCart(CartConvertedEvent event) {
+        List<OrderItem> items = event.items().stream()
+                .map(itemData -> OrderItem.create( 
+                    itemData.productId(),
+                    itemData.quantity(),
+                    itemData.price()
+                ))
+                .collect(Collectors.toList());
+
+        Order newOrder = OrderFactory.createNew( 
+            event.clientId(),
+            items
+        );
+        
+        return orderRepository.save(newOrder);
     }
 
     @Override
-    public Mono<Order> getOrderById(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)));
+    public Mono<Order> getOrderById(UUID orderId) {
+        return orderRepository.findById(orderId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Order not found with ID: " + orderId)));
     }
 
     @Override
     public Flux<Order> getAllOrders() {
-        return persistence.findAllOrders();
+        return orderRepository.findAll();
     }
 
-    @Override
-    public Mono<Order> modifyOrder(UUID id, Order order) {
-
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(existingOrder -> {
-                Order modifiedOrder = OrderFactory.modifyExisting(existingOrder, order);
-                return persistence.updateOrder(modifiedOrder);
-                });
+    private Mono<Order> updateOrderStatus(UUID orderId, java.util.function.Consumer<Order> statusUpdater) {
+        return getOrderById(orderId)
+                .doOnNext(statusUpdater) 
+                .flatMap(orderRepository::save);
     }
-
-    @Override
-    public Mono<Order> updateOrder(UUID id, Order order) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(existingOrder -> {
-                existingOrder.setClientId(order.getClientId());
-                existingOrder.setItems(order.getItems());
-                existingOrder.recalculateTotal();
-                existingOrder.markUpdated();
-                return persistence.updateOrder(existingOrder);
-            });
-    }
-
-    @Override
-    public Mono<Void> deleteOrder(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(existing -> persistence.deleteOrder(id));
-    }
-
-    @Override
-    public Mono<Order> confirmOrder(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(order -> {
-                order.confirm();
-                return persistence.updateOrder(order);
-            });
-    }
-
-    @Override
-    public Mono<Order> shipOrder(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(order -> {
-                order.ship();
-                return persistence.updateOrder(order);
-            });
-    }
-
-    @Override
-    public Mono<Order> deliverOrder(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(order -> {
-                order.deliver();
-                return persistence.updateOrder(order);
-            });
-    }
-
-    @Override
-    public Mono<Order> cancelOrder(UUID id) {
-        return persistence.findOrderById(id)
-            .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
-            .flatMap(order -> {
-                order.cancel();
-                return persistence.updateOrder(order);
-            });
-    }
-
     
+    @Override
+    public Mono<Order> confirmOrder(UUID orderId) {
+        return updateOrderStatus(orderId, Order::confirm);
+    }
 
+    @Override
+    public Mono<Order> shipOrder(UUID orderId) {
+        return updateOrderStatus(orderId, Order::ship);
+    }
+
+    @Override
+    public Mono<Order> deliverOrder(UUID orderId) {
+        return updateOrderStatus(orderId, Order::deliver);
+    }
+
+    @Override
+    public Mono<Order> cancelOrder(UUID orderId) {
+        return updateOrderStatus(orderId, Order::cancel);
+    }
+    
+    @Override
+    public Mono<Order> addProductToOrder(UUID orderId, OrderItem item) {
+        return getOrderById(orderId)
+                .doOnNext(order -> {
+                    if (!order.isModifiable()) {
+                        throw new IllegalStateException("Order " + orderId + " cannot be modified (Status: " + order.getStatus() + ").");
+                    }
+                    order.addItem(item);
+                })
+                .flatMap(orderRepository::save);
+    }
+
+    @Override
+    public Mono<Order> removeProductFromOrder(UUID orderId, UUID productId) {
+        return getOrderById(orderId)
+                .doOnNext(order -> {
+                    if (!order.isModifiable()) {
+                        throw new IllegalStateException("Order " + orderId + " cannot be modified (Status: " + order.getStatus() + ").");
+                    }
+                    order.removeItem(productId);
+                })
+                .flatMap(orderRepository::save);
+    }
+
+    @Override
+    public Mono<Order> updateItemQuantity(UUID orderId, UUID productId, int newQuantity) {
+        return getOrderById(orderId)
+                .doOnNext(order -> {
+                    if (!order.isModifiable()) {
+                        throw new IllegalStateException("Order " + orderId + " cannot be modified (Status: " + order.getStatus() + ").");
+                    }
+                    order.updateItemQuantity(productId, newQuantity);
+                })
+                .flatMap(orderRepository::save);
+    }
 }

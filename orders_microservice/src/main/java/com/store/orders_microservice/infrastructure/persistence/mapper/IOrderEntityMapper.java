@@ -10,10 +10,11 @@ import com.store.orders_microservice.infrastructure.persistence.entity.OrderEnti
 
 
 @Mapper (componentModel = "spring")
-public interface IOrderMapperEntity {
+public interface IOrderEntityMapper {
 
     @Mapping(target = "orderId", source = "id") 
     @Mapping(target = "status", source = "status", qualifiedByName = "mapStatusToEnum")
+    @Mapping(target = "items", ignore = true) 
     Order toDomain (OrderEntity entity);
 
     @Mapping(target = "id", source = "orderId") 
@@ -29,5 +30,4 @@ public interface IOrderMapperEntity {
     default String mapStatusToString(OrderStatus status) {
         return status != null ? status.name() : null;
     }
-
 }

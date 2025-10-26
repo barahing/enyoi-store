@@ -1,5 +1,6 @@
 package com.store.carts_microservice.infrastructure.persistence.adapter;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -33,16 +34,13 @@ public class CartPersistenceAdapter implements ICartRepositoryPort {
         return saveCartEntity.flatMap(savedCartEntity -> {
             
             UUID cartId = savedCartEntity.getId();
-            
             Mono<Void> deleteOldItems = itemRepository.deleteAllByCartId(cartId);
-            
             Mono<List<?>> saveNewItems = Flux.fromIterable(cart.getItems())
                     .map(itemMapper::toEntity)
                     .doOnNext(itemEntity -> itemEntity.setCartId(cartId))
+                    .flatMap(itemRepository::save) 
                     .collectList()
-                    .flatMapMany(itemRepository::saveAll)
-                    .collectList();
-            
+                    .map(list -> (List<?>) list); 
             return Mono.when(deleteOldItems, saveNewItems)
                     .thenReturn(savedCartEntity)
                     .flatMap(this::loadCartWithItems);

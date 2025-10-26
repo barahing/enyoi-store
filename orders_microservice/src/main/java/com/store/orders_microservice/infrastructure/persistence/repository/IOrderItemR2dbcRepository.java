@@ -7,8 +7,9 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import com.store.orders_microservice.infrastructure.persistence.entity.OrderItemEntity;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface IOrderItemR2dbcRepository extends ReactiveCrudRepository<OrderItemEntity, UUID> {
     Flux<OrderItemEntity> findByOrderId(UUID orderId);
-
+    Mono<Void> deleteAllByOrderId(UUID orderId);
 }
