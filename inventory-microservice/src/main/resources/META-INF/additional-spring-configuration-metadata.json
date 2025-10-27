@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "app.rabbitmq.inventory-queue",
+      "type": "java.lang.String",
+      "description": "Nombre de la cola que el microservicio de Inventario utiliza para consumir eventos de Ordenes."
+    },
+    {
+      "name": "app.rabbitmq.exchange",
+      "type": "java.lang.String",
+      "description": "Nombre del Topic Exchange principal utilizado para la comunicación asíncrona entre microservicios (eventos)."
+    },
+    {
+      "name": "app.rabbitmq.routing-keys.stock-reserved",
+      "type": "java.lang.String",
+      "description": "Routing key para el evento StockReservedEvent."
+    },
+    {
+      "name": "app.rabbitmq.routing-keys.stock-failed",
+      "type": "java.lang.String",
+      "description": "Routing key para el evento StockReservationFailedEvent."
+    }
+  ]
+}
