@@ -25,11 +25,60 @@ public class Order {
     private OrderStatus status;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
+    private String cancellationReason;
+    
 
-    public void confirm() {
-        if (this.status != OrderStatus.CREATED)
+    public void handlePaymentSuccess() {
+        if (this.status == OrderStatus.STOCK_RESERVED) {
+            this.status = OrderStatus.CONFIRMED;
+        } else if (this.status == OrderStatus.PENDING) {
+            this.status = OrderStatus.PAYMENT_APPROVED;
+        } else if (this.status == OrderStatus.PAYMENT_APPROVED) {
+            return; 
+        } else {
             throw new OrderCannotBeConfirmedException(this.orderId, this.status);
+        }
+        markUpdated();
+    }
+
+    public void handlePaymentApproved() {
+    this.status = OrderStatus.PAYMENT_APPROVED;
+    if (this.status.equals(OrderStatus.STOCK_RESERVED)) {
         this.status = OrderStatus.CONFIRMED;
+    }
+}
+    
+    public void handleStockReserved() {
+        this.status = OrderStatus.STOCK_RESERVED;
+        if (this.status.equals(OrderStatus.PAYMENT_APPROVED)) {
+            this.status = OrderStatus.CONFIRMED;
+        }
+    }
+
+    public void handleStockFailed(String reason) {
+        this.status = OrderStatus.CANCELLED;
+        this.cancellationReason = "Stock reservation failed: " + reason;
+    }
+
+
+    public void handlePaymentFailed(String reason) {
+    
+        this.status = OrderStatus.CANCELLED; 
+        this.cancellationReason = "Payment failed: " + reason;
+    }
+
+    public void cancel() {
+        if (this.status == OrderStatus.CANCELLED)
+             throw new OrderCancelledException(orderId, status);
+             
+        if (this.status == OrderStatus.CONFIRMED || 
+            this.status == OrderStatus.SHIPPED || 
+            this.status == OrderStatus.DELIVERED) {
+             
+             throw new OrderCannotBeModifiedException(this.orderId, this.status);
+        }
+        
+        this.status = OrderStatus.CANCELLED;
         markUpdated();
     }
 
@@ -44,15 +93,6 @@ public class Order {
         if (this.status != OrderStatus.SHIPPED)
             throw new OrderCannotBeDeliveredException(this.orderId, status);
         this.status = OrderStatus.DELIVERED;
-        markUpdated();
-    }
-
-    public void cancel() {
-        if (this.status == OrderStatus.CANCELLED)
-            throw new OrderCancelledException(orderId, status);
-        if (this.status != OrderStatus.CREATED)
-            throw new OrderCannotBeModifiedException(this.orderId, status);
-        this.status = OrderStatus.CANCELLED;
         markUpdated();
     }
 
@@ -111,10 +151,11 @@ public class Order {
     }
 
     public boolean isModifiable() {
-        return this.status == OrderStatus.CREATED;
+        return this.status == OrderStatus.PENDING;
     }
 
     public void markUpdated() {
         this.updatedDate = LocalDateTime.now();
     }
+
 }

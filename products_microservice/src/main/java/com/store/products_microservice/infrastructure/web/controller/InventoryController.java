@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 @RequiredArgsConstructor
 public class InventoryController {
     
-    // Inyectamos el nuevo puerto de entrada
     private final IStockManagementPort inventoryUseCases; 
 
     @PostMapping("/{productId}/increase/{quantity}")
@@ -42,7 +41,6 @@ public class InventoryController {
 
     @GetMapping("/{productId}/check/{quantity}")
     public Mono<ResponseEntity<Map<String, Object>>> check (@PathVariable UUID productId, @PathVariable int quantity) {
-        // Renombramos el método isInStock a checkStockAvailability
         return inventoryUseCases.checkStockAvailability(productId, quantity) 
             .map(inStock -> ResponseEntity.ok(Map.of(
                 "productId", productId,

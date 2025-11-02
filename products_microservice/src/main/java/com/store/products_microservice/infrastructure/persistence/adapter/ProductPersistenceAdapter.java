@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class ProductPersistenceAdapter implements IProductRepositoryPort { // Implementa el nuevo puerto
+public class ProductPersistenceAdapter implements IProductRepositoryPort { 
     private final IProductR2dbcRepository productRepository;
     private final ProductMapperEntity mapper;
 
@@ -47,13 +47,11 @@ public class ProductPersistenceAdapter implements IProductRepositoryPort { // Im
 
     @Override
     public Flux<Product> findByIds(List<UUID> ids) {
-        // ASUMIMOS que el repositorio tiene un método para buscar por lista de IDs
         return productRepository.findAllById(ids).map(mapper::toDomain);
     }
 
     @Override
     public Flux<Product> saveAll(Flux<Product> products) {
-        // Mapea a entidades y usa el método saveAll reactivo del repositorio
         return productRepository.saveAll(products.map(mapper::toEntity)).map(mapper::toDomain);
     }
 }

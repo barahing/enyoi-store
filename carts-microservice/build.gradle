@@ -30,7 +30,7 @@ ext {
 }
 
 dependencies {
-    implementation 'com.store:store-common:1.0.0'
+    implementation 'com.store:store-common:1.0.1'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
 	implementation 'org.springframework.boot:spring-boot-starter-security'

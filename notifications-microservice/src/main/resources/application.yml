@@ -1,0 +1,47 @@
+server:
+  port: 8088 
+
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    
+  application:
+    name: notifications-service
+  
+  main: 
+    allow-bean-definition-overriding: true
+
+app:
+  rabbitmq:
+    notification-queue: notification-queue 
+    events-exchange: store.events 
+
+  brevo:
+    api-key: "${SENDINBLUE_API_KEY}"
+    sender-email: rikbarahona@gmail.com
+    sender-name: Arka Store
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    hostname: localhost
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true

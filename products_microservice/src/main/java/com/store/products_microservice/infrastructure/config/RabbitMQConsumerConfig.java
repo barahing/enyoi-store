@@ -1,5 +1,3 @@
-// products-microservice/src/main/java/com/store/products_microservice/infrastructure/config/RabbitMQConsumerConfig.java
-
 package com.store.products_microservice.infrastructure.config;
 
 import org.springframework.amqp.core.Binding;
@@ -23,7 +21,6 @@ public class RabbitMQConsumerConfig {
 
     @Bean
     public Queue reserveStockQueue() {
-        // La cola se crea durable
         return new Queue(RESERVE_STOCK_QUEUE, true); 
     }
 

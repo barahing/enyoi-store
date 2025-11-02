@@ -44,7 +44,6 @@ public class CartService implements ICartServicePort {
         return cartRepository.findById(cartId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Cart not found.")))
                 .map(cart -> {
-                    // Lógica de negocio para añadir o actualizar el item
                     cart.addItem(newItem);
                     return cart;
                 })
@@ -87,11 +86,9 @@ public class CartService implements ICartServicePort {
                         return Mono.error(new IllegalStateException("Cart is not convertible (Status: " + cart.getStatus() + ")."));
                     }
                     
-                    // 1. Marcar el carrito como convertido y persistir el cambio
                     cart.markAsConverted();
                     return cartRepository.save(cart)
                             .flatMap(savedCart -> {
-                                // 2. Construir el evento DTO
                                 CartConvertedEvent eventDto = new CartConvertedEvent(
                                     savedCart.getCartId(),
                                     savedCart.getClientId(),
@@ -107,7 +104,6 @@ public class CartService implements ICartServicePort {
                                             .collect(Collectors.toList())
                                 );
                                 
-                                // 3. Publicar el evento de manera asíncrona
                                 return eventPublisher.publishCartConverted(eventDto).thenReturn(savedCart);
                             });
                 });

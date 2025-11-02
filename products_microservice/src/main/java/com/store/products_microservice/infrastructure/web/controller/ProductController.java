@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
-
-// Importamos el puerto renombrado
 import com.store.products_microservice.domain.ports.in.IProductServicePort; 
 import com.store.products_microservice.infrastructure.web.dto.ProductRequestDto;
 import com.store.products_microservice.infrastructure.web.dto.ProductResponseDto;
@@ -30,7 +28,6 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ProductController {
     
-    // Inyectamos el puerto renombrado
     private final IProductServicePort productUseCases; 
     private final ProductMapperDto productMapper;
 

@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS purchase_order (
+    id UUID PRIMARY KEY,
+    supplier_name VARCHAR(255) NOT NULL,
+    product_id UUID NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_cost NUMERIC(10, 2) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    order_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    delivery_date TIMESTAMP WITHOUT TIME ZONE
+);

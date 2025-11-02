@@ -1,0 +1,53 @@
+server:
+  port: 8086
+
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    
+  application:
+    name: payments-service
+  
+  main: 
+    allow-bean-definition-overriding: true
+
+  sql:
+    init:
+      mode: always
+      platform: postgresql
+      schema-locations: classpath:schema.sql
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/paymentsdb
+    username: postgres
+    password: postgres
+
+app:
+  rabbitmq:
+    payment-queue: payment-queue 
+    events-exchange: store.events
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    hostname: localhost
+    
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true

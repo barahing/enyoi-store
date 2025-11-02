@@ -19,7 +19,6 @@ public class UserRabbitListener {
     public void handleUserCreatedEvent(UserCreatedEvent event) {
         log.info("Received UserCreatedEvent for client: {}", event.userId());
         
-        // Llamada al puerto de entrada del dominio
         cartServicePort.createCartForClient(event.userId())
             .subscribe(
                 cart -> log.info("Successfully created cart {} for client {}", cart.getCartId(), event.userId()),

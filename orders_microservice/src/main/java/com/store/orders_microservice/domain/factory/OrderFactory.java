@@ -26,7 +26,9 @@ public final class OrderFactory {
         order.setClientId(clientId);
         order.setItems(items);
         order.recalculateTotal();
-        order.setStatus(OrderStatus.CREATED);
+        
+        order.setStatus(OrderStatus.PENDING);
+        
         order.setCreatedDate(now);
         order.setUpdatedDate(now);
 

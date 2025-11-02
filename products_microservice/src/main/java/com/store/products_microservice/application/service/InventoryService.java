@@ -25,7 +25,6 @@ public class InventoryService implements IStockManagementPort {
         return productRepository.findById(productId)
             .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
             .flatMap(product -> {
-                // Para una operación administrativa de "restock", actualizamos el stockAvailable directamente.
                 Product updated = new Product(
                     product.id(),
                     product.name(),
@@ -53,7 +52,6 @@ public class InventoryService implements IStockManagementPort {
                     return Mono.error(new NotEnoughStockException("Not enough available stock for administrative decrease."));
                 }
                 
-                // Para una operación administrativa de "descarte", actualizamos el stockAvailable.
                 Product updated = new Product(
                     product.id(),
                     product.name(),
@@ -76,7 +74,6 @@ public class InventoryService implements IStockManagementPort {
 
     @Override
     public Mono<Void> handleStockReservation(ReserveStockCommand command) {
-        // Implementación de la saga asíncrona pendiente. Usaremos la versión que usa múltiples productos.
         return Mono.empty();
     }
 }

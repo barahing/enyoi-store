@@ -13,7 +13,6 @@ public interface ICartItemEntityMapper {
     @Mapping(target = "id", ignore = true)
     CartItemEntity toEntity(CartItem domain);
 
-    // Ignoramos explícitamente los métodos del record que MapStruct detecta como propiedades no mapeadas.
     @Mapping(target = "withUpdatedQuantity", ignore = true)
     @Mapping(target = "withUpdatedPrice", ignore = true)
     CartItem toDomain(CartItemEntity entity);

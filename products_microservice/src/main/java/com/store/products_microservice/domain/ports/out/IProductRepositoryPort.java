@@ -12,8 +12,6 @@ public interface IProductRepositoryPort {
     Flux<Product> findAll();
     Mono<Product> update(UUID id, Product product);
     Mono<Void> deleteById(UUID id);
-
-    // Nuevo: Para la Saga, permite buscar y guardar múltiples productos
     Flux<Product> findByIds(List<UUID> ids); 
     Flux<Product> saveAll(Flux<Product> products); 
 }

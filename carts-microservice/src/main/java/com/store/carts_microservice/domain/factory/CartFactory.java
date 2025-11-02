@@ -22,9 +22,9 @@ public class CartFactory {
         return new Cart(
             UUID.randomUUID(), 
             clientId,
-            Collections.<CartItem>emptyList(), // Lista vacía
+            Collections.<CartItem>emptyList(), 
             BigDecimal.ZERO,
-            CartStatus.ACTIVE, // Estado por defecto
+            CartStatus.ACTIVE, 
             now,
             now
         );
