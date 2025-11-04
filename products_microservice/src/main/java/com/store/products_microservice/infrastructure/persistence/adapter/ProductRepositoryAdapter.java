@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class ProductPersistenceAdapter implements IProductRepositoryPort { 
+public class ProductRepositoryAdapter implements IProductRepositoryPort { 
     private final IProductR2dbcRepository productRepository;
     private final ProductMapperEntity mapper;
 

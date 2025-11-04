@@ -28,7 +28,7 @@ spring:
 app:
   rabbitmq:
     payment-queue: payment-queue 
-    events-exchange: store.events
+    exchange: store.events
 
 eureka:
   client:

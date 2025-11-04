@@ -7,6 +7,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping; 
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -34,10 +35,24 @@ public class ProductStockController {
         return stockServicePort.getStockByProductId(productId)
                 .map(stockMapper::toDto);
     }
+    
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<ProductStockResponseDto> createInitialStock(@RequestBody @Validated InitialStockRequestDto requestDto) {
         return stockServicePort.createInitialStock(requestDto.getProductId(), requestDto.getInitialStock())
+                .map(stockMapper::toDto);
+    }
+    
+    @PutMapping("/{productId}")
+    public Mono<ProductStockResponseDto> updateInitialStock(
+        @PathVariable UUID productId,
+        @RequestBody @Validated InitialStockRequestDto requestDto) {
+        
+        if (!productId.equals(requestDto.getProductId())) {
+             return Mono.error(new IllegalArgumentException("Product ID in path must match Product ID in request body."));
+        }
+        
+        return stockServicePort.updateInitialStock(productId, requestDto.getInitialStock())
                 .map(stockMapper::toDto);
     }
 }

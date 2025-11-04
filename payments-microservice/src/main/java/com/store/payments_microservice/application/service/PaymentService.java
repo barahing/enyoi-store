@@ -1,6 +1,5 @@
 package com.store.payments_microservice.application.service;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.Random;
 
@@ -10,11 +9,9 @@ import com.store.payments_microservice.domain.model.Payment;
 import com.store.payments_microservice.domain.ports.in.IPaymentServicePort;
 import com.store.payments_microservice.domain.ports.out.IEventPublisherPort;
 import com.store.payments_microservice.domain.ports.out.IPaymentRepositoryPort;
-
-import com.store.common.events.OrderCreatedEvent;
+import com.store.common.commands.ProcessPaymentCommand; 
 import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; 
 import reactor.core.publisher.Mono;
@@ -29,16 +26,16 @@ public class PaymentService implements IPaymentServicePort {
     private final Random random = new Random();
 
     @Override
-    public Mono<Void> processOrderPayment(OrderCreatedEvent event) {
+    public Mono<Void> processOrderPayment(ProcessPaymentCommand command) {
 
         boolean paymentSuccessful = random.nextInt(100) < 80; 
         
-        UUID orderId = event.getOrderId();
-        BigDecimal amount = event.getAmount();
-
-        Payment payment = Payment.createNew(orderId, amount, "Simulated Card");
+        UUID orderId = command.orderId();
+        String paymentMethod = command.paymentMethod();
         
-        log.info("Processing payment for Order ID: {} Amount: {}", orderId, amount);
+        Payment payment = Payment.createNew(orderId, command.amount(), paymentMethod);
+        
+        log.info("Processing payment for Order ID: {} Amount: {}", orderId, command.amount());
 
         return persistencePort.save(payment)
             .flatMap(savedPayment -> {

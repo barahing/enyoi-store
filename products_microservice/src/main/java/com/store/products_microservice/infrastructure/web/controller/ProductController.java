@@ -45,14 +45,12 @@ public class ProductController {
 
     @PutMapping("/{productId}")
     public Mono<ProductResponseDto> updateProduct(@Valid @PathVariable("productId") UUID productId, @RequestBody ProductRequestDto product) {
-        // El mapper debe encargarse de no enviar stock, o el UseCase lo ignorará (como lo hace ahora)
         return productUseCases.updateProduct(productId, productMapper.toDomain(product))
                 .map(productMapper::toResponseDto);
     }
 
     @PostMapping()
     public Mono<ProductResponseDto> createProduct(@Valid @RequestBody ProductRequestDto product) {
-        // El mapper debe usar la ProductFactory para crear el dominio
         return productUseCases.createProduct(productMapper.toDomain(product)) 
                 .map(productMapper::toResponseDto);
     }

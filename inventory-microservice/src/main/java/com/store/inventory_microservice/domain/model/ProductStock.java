@@ -22,7 +22,7 @@ public class ProductStock {
         this.reservedStock = reservedStock;
     }
 
-    public static ProductStock createNew(UUID productId, int initialStock) {
+    public static ProductStock create(UUID productId, int initialStock) {
         if (initialStock < 0) {
             throw new IllegalArgumentException("Initial stock cannot be negative.");
         }
@@ -33,29 +33,32 @@ public class ProductStock {
         return new ProductStock(productId, currentStock, reservedStock);
     }
 
+    public boolean canReserve(int quantity) {
+        if (quantity <= 0) return false;
+        return this.getAvailableStock() >= quantity;
+    }
+
     public void reserveStock(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive.");
         }
         
-        int available = this.currentStock - this.reservedStock;
-        
-        if (available < quantity) {
+        if (!this.canReserve(quantity)) {
             throw new IllegalStateException(
                 String.format("Not enough stock for product %s. Available: %d, Requested: %d", 
-                productId, available, quantity)
+                productId, this.getAvailableStock(), quantity)
             );
         }
         this.reservedStock += quantity;
     }
 
-    public void deductReservedStock(int quantity) {
+    public void confirmReservation(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive.");
         }
         
         if (this.reservedStock < quantity) {
-            throw new IllegalStateException("Cannot deduct more reserved stock than currently reserved.");
+            throw new IllegalStateException("Cannot confirm more stock than currently reserved.");
         }
         
         this.currentStock -= quantity;
@@ -93,5 +96,4 @@ public class ProductStock {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
-
 }

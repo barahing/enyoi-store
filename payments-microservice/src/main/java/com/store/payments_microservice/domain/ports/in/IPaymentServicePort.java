@@ -1,9 +1,9 @@
 package com.store.payments_microservice.domain.ports.in;
 
-import java.util.UUID;
+import com.store.common.commands.ProcessPaymentCommand;
 
 import reactor.core.publisher.Mono;
 
 public interface IPaymentServicePort {
-    Mono<Void> processOrderPayment(UUID orderId);
+    Mono<Void> processOrderPayment(ProcessPaymentCommand command);
 }

@@ -3,8 +3,10 @@ package com.store.orders_microservice.infrastructure.event.adapter;
 import java.util.UUID;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+
 import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
 import com.store.common.events.StockReservationFailedEvent;
@@ -15,6 +17,7 @@ import com.store.orders_microservice.domain.exception.OrderNotFoundException;
 import com.store.orders_microservice.domain.model.Order;
 import com.store.orders_microservice.domain.ports.out.IEventPublisherPort;
 import com.store.orders_microservice.domain.ports.out.IOrderRepositoryPort;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -34,11 +37,9 @@ public class SagaEventsConsumer {
     public void handlePaymentProcessed(PaymentProcessedEvent event) {
         this.processSagaEvent(event.getOrderId(), "PaymentProcessedEvent", 
             order -> {
-                // ✅ AJUSTE: Usamos handlePaymentApproved para coherencia con el dominio
                 order.handlePaymentApproved(); 
                 
-                // Si la orden está CONFIRMED (tanto pago como stock fueron exitosos), publicamos el evento final.
-                // Esto maneja el caso de que el pago llegue antes o después de la reserva de stock.
+                // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
                 if (order.getStatus().toString().equals("CONFIRMED")) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
                         new com.store.common.events.OrderConfirmedEvent(order.getOrderId(), order.getClientId())
@@ -55,7 +56,6 @@ public class SagaEventsConsumer {
             order -> {
                 order.handlePaymentFailed(event.getReason()); 
                 
-                // Mapear OrderItems a ProductStockDTOs para el comando de rollback
                 List<ProductStockDTO> productsToRelease = order.getItems().stream()
                     .map(item -> new ProductStockDTO(item.productId(), item.quantity()))
                     .collect(Collectors.toList());
@@ -74,7 +74,6 @@ public class SagaEventsConsumer {
                 
                 Mono<Void> releaseStock = eventPublisherPort.publishReleaseStockCommand(releaseCommand);
                 
-                // Retornar la secuencia de publicación: Cancelar y luego Rollback.
                 return cancelNotification.then(releaseStock);
             }
         ).subscribeOn(Schedulers.boundedElastic()).subscribe();
@@ -88,7 +87,7 @@ public class SagaEventsConsumer {
             order -> {
                 order.handleStockReserved();
                 
-                // Si la orden está CONFIRMED (tanto pago como stock fueron exitosos), publicamos el evento final.
+                // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
                 if (order.getStatus().toString().equals("CONFIRMED")) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
                         new com.store.common.events.OrderConfirmedEvent(order.getOrderId(), order.getClientId())
@@ -105,8 +104,6 @@ public class SagaEventsConsumer {
             order -> {
                 order.handleStockFailed(event.reason()); 
                 
-                // No se necesita rollback a Pagos ya que el pago no se hizo (o se revirtió antes),
-                // y no se necesita rollback a Stock porque el fallo ocurrió ahí. 
                 // Solo se necesita notificación de cancelación.
                 return eventPublisherPort.publishOrderCancelledEvent(
                     new com.store.common.events.OrderCancelledEvent(order.getOrderId(), order.getClientId(), event.reason())
@@ -115,10 +112,6 @@ public class SagaEventsConsumer {
         ).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
 
-    /**
-     * Helper method to centralize the reactive sequence: Find -> Apply Domain Logic -> Save -> Publish Next Action.
-     * This ensures the order state is saved before any subsequent event/command is published.
-     */
     private Mono<Void> processSagaEvent(UUID orderId, String eventName, java.util.function.Function<Order, Mono<Void>> action) {
         return orderRepositoryPort.findById(orderId)
             .switchIfEmpty(Mono.error(new OrderNotFoundException(orderId)))
@@ -129,7 +122,7 @@ public class SagaEventsConsumer {
                 
                 Mono<Order> saveAction = orderRepositoryPort.save(order);
                 
-                // Aseguramos la atomicidad: Guardamos el estado de la orden y luego publicamos el siguiente evento/comando
+                // Guardamos el estado de la orden y luego publicamos el siguiente evento/comando
                 return saveAction.then(publishAction); 
             })
             .onErrorResume(e -> {

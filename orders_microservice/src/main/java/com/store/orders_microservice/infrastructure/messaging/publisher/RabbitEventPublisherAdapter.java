@@ -3,7 +3,9 @@ package com.store.orders_microservice.infrastructure.messaging.publisher;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.store.common.commands.ReleaseStockCommand; // Nuevo import
+import com.store.common.commands.ProcessPaymentCommand; 
+import com.store.common.commands.ReleaseStockCommand; 
+import com.store.common.commands.ReserveStockCommand; 
 import com.store.common.events.OrderCancelledEvent;
 import com.store.common.events.OrderConfirmedEvent;
 import com.store.common.events.OrderCreatedEvent;
@@ -19,14 +21,17 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
 
     private final AmqpTemplate amqpTemplate;
 
-    @Value("${app.rabbitmq.events-exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String eventsExchange;
 
     private static final String KEY_ORDER_CREATED = "order.created";
     private static final String KEY_ORDER_CONFIRMED = "order.confirmed";
     private static final String KEY_ORDER_CANCELLED = "order.cancelled";
-    // 🚨 Nueva Key para el comando de reversión
-    private static final String KEY_RELEASE_STOCK = "stock.release"; 
+    
+    // Keys para los comandos de la Saga (Producidos por Orders)
+    private static final String KEY_PROCESS_PAYMENT = "payment.process"; // Comando a Payment
+    private static final String KEY_RESERVE_STOCK = "stock.reserve"; // Comando a Inventory
+    private static final String KEY_RELEASE_STOCK = "stock.release"; // Comando de reversión
 
     private Mono<Void> sendEvent(String routingKey, Object event) {
         return Mono.fromRunnable(() -> {
@@ -53,5 +58,15 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
     @Override
     public Mono<Void> publishReleaseStockCommand(ReleaseStockCommand command) {
         return sendEvent(KEY_RELEASE_STOCK, command);
+    }
+    
+    @Override
+    public Mono<Void> publishProcessPaymentCommand(ProcessPaymentCommand command) {
+        return sendEvent(KEY_PROCESS_PAYMENT, command);
+    }
+
+    @Override
+    public Mono<Void> publishReserveStockCommand(ReserveStockCommand command) {
+        return sendEvent(KEY_RESERVE_STOCK, command);
     }
 }

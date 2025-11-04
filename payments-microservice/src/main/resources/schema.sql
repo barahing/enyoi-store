@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS payment (
     processed_at TIMESTAMP WITHOUT TIME ZONE
 );
 
-CREATE INDEX idx_payment_order_id ON payment (order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_order_id ON payment (order_id);

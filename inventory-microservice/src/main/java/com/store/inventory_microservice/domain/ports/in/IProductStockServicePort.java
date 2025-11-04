@@ -13,7 +13,11 @@ public interface IProductStockServicePort {
     Mono<ProductStock> getStockByProductId(UUID productId);
     Mono<ProductStock> createInitialStock(UUID productId, int initialStock);
     Mono<Void> deductStock(UUID productId, int quantity);
+    Mono<ProductStock> updateInitialStock(UUID productId, int initialStock);
+
 
     Mono<Void> processOrderCreation(UUID orderId, List<ProductStockDTO> products);
     Mono<Void> releaseOrderStock(UUID orderId, List<ProductStockDTO> products);
+    Mono<Void> confirmStockReservation(UUID orderId);
+
 }

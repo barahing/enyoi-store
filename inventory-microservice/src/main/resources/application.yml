@@ -9,10 +9,16 @@ spring:
     password: guest
     
   application:
-    name: inventory-service
+    name: inventory-microservice
   
   main: 
     allow-bean-definition-overriding: true
+
+  # CONFIGURACIÓN DE BASE DE DATOS R2DBC
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/inventorydb
+    username: postgres
+    password: postgres
 
   sql:
     init:
@@ -20,19 +26,19 @@ spring:
       platform: postgresql
       schema-locations: classpath:schema.sql
 
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/inventorydb
-    username: postgres
-    password: postgres
-
 app:
   rabbitmq:
-    inventory-queue: inventory-queue 
     exchange: store.events
-    routing-keys:
-      stock-reserved: stock.reserved
-      stock-failed: stock.failed
+    
+    order-created-queue: order-created-queue
+    release-stock-command-queue: release-stock-command-queue
+    payment-processed-queue: payment-processed-queue 
+    
+    stock-reserved-key: stock.reserved
+    stock-reservation-failed-key: stock.failed
 
+  product-service:
+    url: http://localhost:8082
 eureka:
   client:
     service-url:

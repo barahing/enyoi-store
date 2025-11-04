@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${app.rabbitmq.events-exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String eventsExchangeName;
     
     @Value("${app.rabbitmq.orders-saga-queue}")

@@ -43,3 +43,13 @@ management:
       show-details: always
       probes:
         enabled: true
+
+app:
+  rabbitmq:
+    exchange: store.events
+    orders-saga-queue: orders-saga-queue
+    
+    order-created-key: order.created 
+    reserve-stock-command-key: stock.reserve 
+    process-payment-command-key: payment.process 
+    complete-order-command-key: order.complete 

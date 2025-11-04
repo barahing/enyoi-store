@@ -22,7 +22,5 @@ public class ProductEntity {
     private String name;
     private String description;
     private BigDecimal price;
-    private Integer stockAvailable;
-    private Integer stockReserved;
     private UUID categoryId;
 }

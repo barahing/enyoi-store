@@ -16,6 +16,7 @@ public class InitialStockRequestDto {
     @NotNull(message = "Product ID is required")
     private UUID productId;
     
+    @NotNull(message = "Initial stock is required")
     @PositiveOrZero(message = "Initial stock cannot be negative")
-    private int initialStock;
+    private Integer initialStock;
 }

@@ -3,11 +3,9 @@ package com.store.inventory_microservice.infrastructure.event.adapter;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import com.store.common.events.StockReservationFailedEvent;
 import com.store.common.events.StockReservedEvent;
 import com.store.inventory_microservice.domain.ports.out.IEventPublisherPort;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -20,7 +18,7 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
     
     private final RabbitTemplate rabbitTemplate;
     
-    @Value("${app.rabbitmq.events-exchange}")
+    @Value("${app.rabbitmq.exchange}") 
     private String eventsExchange;
 
     private static final String KEY_STOCK_RESERVED = "stock.reserved";

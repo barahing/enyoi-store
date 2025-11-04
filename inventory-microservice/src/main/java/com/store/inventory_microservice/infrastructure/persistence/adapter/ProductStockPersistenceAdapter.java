@@ -3,31 +3,75 @@ package com.store.inventory_microservice.infrastructure.persistence.adapter;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.store.inventory_microservice.domain.model.ProductStock;
-import com.store.inventory_microservice.domain.ports.out.IProductStockRepositoryPort;
-import com.store.inventory_microservice.infrastructure.persistence.mapper.IProductStockEntityMapper;
+import com.store.inventory_microservice.domain.model.StockReservation;
+import com.store.inventory_microservice.domain.ports.out.IProductStockPersistencePort;
+import com.store.inventory_microservice.infrastructure.persistence.entity.ProductStockEntity;
+import com.store.inventory_microservice.infrastructure.persistence.entity.StockReservationEntity;
+import com.store.inventory_microservice.infrastructure.persistence.mapper.IProductStockMapper;
+import com.store.inventory_microservice.infrastructure.persistence.mapper.IStockReservationMapper;
 import com.store.inventory_microservice.infrastructure.persistence.repository.IProductStockR2dbcRepository;
+import com.store.inventory_microservice.infrastructure.persistence.repository.IStockReservationR2dbcRepository;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class ProductStockPersistenceAdapter implements IProductStockRepositoryPort {
+public class ProductStockPersistenceAdapter implements IProductStockPersistencePort {
 
-    private final IProductStockR2dbcRepository repository;
-    private final IProductStockEntityMapper mapper;
+    private final IProductStockR2dbcRepository stockRepository;
+    private final IStockReservationR2dbcRepository reservationRepository;
+    private final IProductStockMapper stockMapper;
+    private final IStockReservationMapper reservationMapper;
 
     @Override
-    public Mono<ProductStock> findByProductId(UUID productId) {
-        return repository.findById(productId)
-            .map(mapper::toDomain);
+    @Transactional
+    public Mono<ProductStock> create(ProductStock stock) {
+    // Usamos el método de fábrica de la entidad para forzar isNew=true
+        ProductStockEntity entity = ProductStockEntity.newEntity(
+        stock.getProductId(),
+        stock.getCurrentStock(),
+        stock.getReservedStock()
+        );
+
+        return stockRepository.save(entity)
+        .map(stockMapper::toDomain);
     }
 
     @Override
-    public Mono<ProductStock> save(ProductStock stock) {
-        return repository.save(mapper.toEntity(stock))
-            .map(mapper::toDomain);
+    @Transactional
+        public Mono<ProductStock> update(ProductStock stock) {
+        // Para la actualización, mapeamos normalmente (isNew será false)
+        return stockRepository.save(stockMapper.toEntity(stock))
+        .map(stockMapper::toDomain);
+}
+
+    @Override
+    public Mono<ProductStock> findByProductId(UUID productId) {
+        return stockRepository.findById(productId)
+            .map(stockMapper::toDomain);
+    }
+
+    @Override
+    public Mono<StockReservation> saveReservation(StockReservation reservation) {
+        StockReservationEntity entity = reservationMapper.toEntity(reservation);
+        return reservationRepository.save(entity)
+            .map(reservationMapper::toDomain);
+    }
+
+    @Override
+    public Flux<StockReservation> findReservationsByOrderId(UUID orderId) {
+        return reservationRepository.findByOrderId(orderId)
+            .map(reservationMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Void> deleteReservation(StockReservation reservation) {
+        StockReservationEntity entity = reservationMapper.toEntity(reservation);
+        return reservationRepository.delete(entity);
     }
 }

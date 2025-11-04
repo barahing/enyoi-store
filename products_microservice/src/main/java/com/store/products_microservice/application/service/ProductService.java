@@ -43,8 +43,6 @@ public class ProductService implements IProductServicePort {
                     product.name() != null ? product.name() : existingProduct.name(),
                     product.description() != null ? product.description() : existingProduct.description(),
                     product.price() != null ? product.price() : existingProduct.price(),
-                    existingProduct.stockAvailable(), 
-                    existingProduct.stockReserved(), 
                     product.categoryId() != null ? product.categoryId() : existingProduct.categoryId()
                 );
                 return productRepository.save(updatedProduct);

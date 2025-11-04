@@ -12,13 +12,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${app.rabbitmq.events-exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String eventsExchangeName;
     
     @Value("${app.rabbitmq.payment-queue}")
     private String paymentQueueName;
     
-    private static final String ORDER_CREATED_ROUTING_KEY = "order.created"; 
+    private static final String PROCESS_PAYMENT_ROUTING_KEY = "payment.process"; 
 
     @Bean
     public Exchange eventsExchange() {
@@ -30,7 +30,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue paymentQueue() {
-        return new Queue(paymentQueueName, true); // true = durable
+        return new Queue(paymentQueueName, true);
     }
 
     @Bean
@@ -38,7 +38,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(paymentQueue())
                 .to(eventsExchange())
-                .with(ORDER_CREATED_ROUTING_KEY)
+                 .with(PROCESS_PAYMENT_ROUTING_KEY) 
                 .noargs();
     }
 }

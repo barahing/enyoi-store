@@ -16,7 +16,6 @@ public abstract class ProductMapperDto {
             requestDto.getName(),
             requestDto.getDescription(),
             requestDto.getPrice(),
-            requestDto.getInitialStock(), 
             requestDto.getCategoryId()
         );
     }
