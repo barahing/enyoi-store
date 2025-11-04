@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 
 public interface IProductStockPersistencePort {
     
+    Flux<ProductStock> findAllStocks();
     Mono<ProductStock> create(ProductStock stock);
     Mono<ProductStock> update(ProductStock stock);
     Mono<ProductStock> findByProductId(UUID productId);

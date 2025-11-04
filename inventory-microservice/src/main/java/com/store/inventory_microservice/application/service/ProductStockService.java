@@ -157,4 +157,10 @@ public class ProductStockService implements IProductStockServicePort {
             .then()
             .doOnError(e -> log.error("Error confirming stock reservation for Order {}: {}", orderId, e.getMessage()));
     }
+
+    @Override
+    public Flux<ProductStock> getAllStocks() {
+        return persistencePort.findAllStocks();
+        
+    }
 }

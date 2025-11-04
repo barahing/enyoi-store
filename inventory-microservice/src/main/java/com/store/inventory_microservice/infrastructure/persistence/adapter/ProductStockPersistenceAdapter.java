@@ -31,7 +31,6 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
     @Override
     @Transactional
     public Mono<ProductStock> create(ProductStock stock) {
-    // Usamos el método de fábrica de la entidad para forzar isNew=true
         ProductStockEntity entity = ProductStockEntity.newEntity(
         stock.getProductId(),
         stock.getCurrentStock(),
@@ -73,5 +72,11 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
     public Mono<Void> deleteReservation(StockReservation reservation) {
         StockReservationEntity entity = reservationMapper.toEntity(reservation);
         return reservationRepository.delete(entity);
+    }
+
+    @Override
+    public Flux<ProductStock> findAllStocks() {
+        return stockRepository.findAll()
+            .map(stockMapper::toDomain);
     }
 }

@@ -19,6 +19,7 @@ import com.store.inventory_microservice.infrastructure.web.dto.ProductStockRespo
 import com.store.inventory_microservice.infrastructure.web.mapper.IProductStockMapperDto;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -33,6 +34,12 @@ public class ProductStockController {
     @GetMapping("/{productId}")
     public Mono<ProductStockResponseDto> getStockByProductId(@PathVariable UUID productId) {
         return stockServicePort.getStockByProductId(productId)
+                .map(stockMapper::toDto);
+    }
+
+    @GetMapping()
+    public Flux<ProductStockResponseDto> getAllStocks() {
+        return stockServicePort.getAllStocks()
                 .map(stockMapper::toDto);
     }
     
