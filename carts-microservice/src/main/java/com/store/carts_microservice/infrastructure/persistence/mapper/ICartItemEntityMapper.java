@@ -9,8 +9,8 @@ import com.store.carts_microservice.infrastructure.persistence.entity.CartItemEn
 @Mapper(componentModel = "spring")
 public interface ICartItemEntityMapper {
 
-    @Mapping(target = "cartId", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "cartId", ignore = true)
     CartItemEntity toEntity(CartItem domain);
 
     @Mapping(target = "withUpdatedQuantity", ignore = true)

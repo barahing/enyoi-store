@@ -9,7 +9,6 @@ public record CartItem(
     BigDecimal price,
     BigDecimal subtotal
 ) {
-
     public static CartItem create(UUID productId, Integer quantity, BigDecimal price) {
         if (productId == null) {
             throw new IllegalArgumentException("Product ID cannot be null");

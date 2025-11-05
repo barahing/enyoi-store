@@ -1,6 +1,5 @@
 package com.store.carts_microservice.infrastructure.persistence.mapper;
 
-import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -10,14 +9,14 @@ import com.store.carts_microservice.domain.model.Cart;
 import com.store.carts_microservice.domain.model.CartItem;
 import com.store.carts_microservice.domain.model.CartStatus;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartEntity;
-import com.store.carts_microservice.infrastructure.persistence.entity.CartItemEntity;
 
-@Mapper(componentModel = "spring")
+import java.util.List;
+
+@Mapper(componentModel = "spring", uses = {ICartItemEntityMapper.class})
 public abstract class ICartEntityMapper {
     
     @Autowired
-    protected ICartItemEntityMapper itemMapper;
-
+    protected ICartItemEntityMapper cartItemMapper;
     @Mapping(target = "cartId", source = "id")
     @Mapping(target = "status", source = "status", qualifiedByName = "mapStatusToEnum")
     @Mapping(target = "items", ignore = true)
@@ -29,7 +28,12 @@ public abstract class ICartEntityMapper {
 
     @Named("mapStatusToEnum")
     protected CartStatus mapStatusToEnum(String status) {
-        return status != null ? CartStatus.valueOf(status.toUpperCase()) : null;
+        if (status == null) return null;
+        try {
+            return CartStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return CartStatus.ACTIVE;
+        }
     }
 
     @Named("mapStatusToString")
@@ -37,11 +41,16 @@ public abstract class ICartEntityMapper {
         return status != null ? status.name() : null;
     }
     
-    public List<CartItem> toDomainList(List<CartItemEntity> entities) {
-        return entities.stream().map(itemMapper::toDomain).toList();
-    }
-    
-    public List<CartItemEntity> toEntityList(List<CartItem> domains) {
-        return domains.stream().map(itemMapper::toEntity).toList();
+    // ✅ Método manual para mapear con items
+    public Cart toDomainWithItems(CartEntity entity, List<CartItem> items) {
+        return new Cart(
+            entity.getId(),           // cartId se asigna en constructor
+            entity.getClientId(),
+            items,                    // items se pasan directamente
+            entity.getTotal(),
+            mapStatusToEnum(entity.getStatus()),
+            entity.getCreatedDate(),
+            entity.getUpdatedDate()
+        );
     }
 }

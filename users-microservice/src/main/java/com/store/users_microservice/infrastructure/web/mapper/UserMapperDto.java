@@ -18,7 +18,7 @@ public abstract class UserMapperDto {
             requestDto.getFirstName(),
             requestDto.getLastName(),
             requestDto.getEmail(),
-            requestDto.getPassword() 
+            requestDto.getPassword()
         );
     }
     
