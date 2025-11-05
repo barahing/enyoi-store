@@ -19,3 +19,9 @@ target/
 
 # Logs
 *.log
+
+# Ignore archives
+*.zip
+*.tar
+*.jar
+*.war
