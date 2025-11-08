@@ -13,4 +13,8 @@ public interface IUserServicePort {
     Flux<User> getAllUsers();
     Mono<User> updateUser(UUID id, User user);
     Mono<Void> deleteUser(UUID id);
+    Mono<Void> deactivateUser(UUID userId);
+    Mono<Void> activateUser(UUID userId);
+    Mono<Boolean> userCanBeDeleted(UUID userId);
+    Mono<Boolean> userHasPendingOrders(UUID userId);
 }

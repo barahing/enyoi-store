@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -104,9 +105,12 @@ public class OrderController {
         return orderServicePort.removeProductFromOrder(orderId, productId).then();
     }
     
-    /*@DeleteMapping("/{orderId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Mono<Void> hardDeleteOrder(@PathVariable UUID orderId) {
-        return orderServicePort.deleteOrder(orderId);
-    }*/
+    @PostMapping("/{orderId}/process-payment")
+    public Mono<OrderResponseDto> processPayment(
+            @PathVariable UUID orderId,
+            @RequestParam String paymentMethod) {
+        
+        return orderServicePort.processPayment(orderId, paymentMethod)
+                .map(orderMapper::toResponseDto);
+    }
 }

@@ -10,7 +10,9 @@ public record CartConvertedEvent(
     UUID clientId,
     BigDecimal total,
     LocalDateTime conversionDate,
-    List<CartItemData> items
+    List<CartItemData> items,
+    String paymentMethod 
+
 ) {
     public record CartItemData(
         UUID productId,

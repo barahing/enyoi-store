@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import com.store.common.events.CartConvertedEvent;
 import com.store.common.events.OrderCreatedEvent;
 import com.store.common.events.OrderCancelledEvent;
+import com.store.common.commands.ProcessPaymentCommand; 
+import com.store.common.commands.ReserveStockCommand;
 import com.store.common.dto.ProductStockDTO; 
 import com.store.orders_microservice.domain.exception.OrderNotFoundException; 
 import com.store.orders_microservice.domain.factory.OrderFactory; 
@@ -37,7 +39,7 @@ public class OrderService implements IOrderServicePort {
             .flatMap(orderRepository::save);
     }
 
-    @Override
+@Override
     public Mono<Order> createOrderFromCart(CartConvertedEvent event) {
         
         List<OrderItem> items = event.items().stream()
@@ -67,8 +69,36 @@ public class OrderService implements IOrderServicePort {
                     productList 
                 );
                 
+                // SOLO publicar OrderCreatedEvent y ReserveStockCommand
+                // NO publicar ProcessPaymentCommand aquí
                 return eventPublisher.publishOrderCreatedEvent(orderCreatedEvent)
-                    .thenReturn(savedOrder);
+                    .then(Mono.defer(() -> {
+                        ReserveStockCommand reserveCommand = new ReserveStockCommand(
+                            savedOrder.getOrderId(),
+                            productList
+                        );
+                        return eventPublisher.publishReserveStockCommand(reserveCommand)
+                            .thenReturn(savedOrder);
+                    }));
+            });
+    }
+
+    // NUEVO MÉTODO para procesar pago
+    @Override
+    public Mono<Order> processPayment(UUID orderId, String paymentMethod) {
+        return getOrderById(orderId)
+            .filter(order -> order.getStatus().toString().equals("CREATED"))
+            .switchIfEmpty(Mono.error(new IllegalStateException("Solo orders en estado CREATED pueden ser pagadas")))
+            .flatMap(order -> {
+                // Enviar comando a Payment Service
+                ProcessPaymentCommand paymentCommand = new ProcessPaymentCommand(
+                    orderId,
+                    order.getClientId(),
+                    order.getTotal(),
+                    paymentMethod
+                );
+                return eventPublisher.publishProcessPaymentCommand(paymentCommand)
+                    .thenReturn(order);
             });
     }
 

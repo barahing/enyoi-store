@@ -163,4 +163,12 @@ public class ProductStockService implements IProductStockServicePort {
         return persistencePort.findAllStocks();
         
     }
+    
+    @Override
+    public Mono<Boolean> isQuantityAvailable(UUID productId, int quantity) {
+        return persistencePort.findByProductId(productId)
+            .map(stock -> stock.getCurrentStock() >= quantity)
+            .defaultIfEmpty(false);
+    }
+
 }

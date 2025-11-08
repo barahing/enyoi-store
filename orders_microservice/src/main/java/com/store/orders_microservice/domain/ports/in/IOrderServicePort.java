@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 public interface IOrderServicePort {
 
     Mono<Order> createOrderFromCart(CartConvertedEvent event);
+    Mono<Order> processPayment(UUID orderId, String paymentMethod);
     Mono<Order> getOrderById(UUID orderId);
     Flux<Order> getAllOrders();
     Mono<Order> confirmOrder(UUID orderId);

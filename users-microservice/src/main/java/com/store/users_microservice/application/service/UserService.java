@@ -4,8 +4,12 @@ import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.store.common.events.UserActivatedEvent;
 import com.store.common.events.UserCreatedEvent;
+import com.store.common.events.UserDeactivatedEvent;
 import com.store.users_microservice.domain.exception.UserNotFoundException;
+import com.store.users_microservice.domain.model.Role;
 import com.store.users_microservice.domain.model.User;
 import com.store.users_microservice.domain.ports.in.IUserServicePort;
 import com.store.users_microservice.domain.ports.out.IUserRepositoryPort;
@@ -88,4 +92,61 @@ public class UserService implements IUserServicePort {
             .switchIfEmpty(Mono.error(new UserNotFoundException(id)))
             .flatMap(u -> userRepository.deleteById(id));
     }
+
+    @Override
+    public Mono<Void> deactivateUser(UUID userId) {
+        return userRepository.findById(userId)
+            .switchIfEmpty(Mono.error(new UserNotFoundException(userId)))
+            .flatMap(user -> {
+                // Crear nueva instancia con rol INACTIVE
+                User deactivatedUser = new User(
+                    user.id(),
+                    user.firstName(),
+                    user.lastName(), 
+                    user.email(),
+                    user.passwordHash(),
+                    Role.INACTIVE
+                );
+                
+                return userRepository.update(userId, deactivatedUser)
+                    .then(userEventPublisherPort.publishUserDeactivated(  // ← CORREGIDO: usar userEventPublisherPort
+                        new UserDeactivatedEvent(userId)                  // ← Pasar el evento completo
+                    ));
+            });
+    }
+
+    @Override
+    public Mono<Void> activateUser(UUID userId) {
+        return userRepository.findById(userId)
+            .switchIfEmpty(Mono.error(new UserNotFoundException(userId)))
+            .flatMap(user -> {
+                // Crear nueva instancia con rol CLIENT
+                User activatedUser = new User(
+                    user.id(),
+                    user.firstName(),
+                    user.lastName(),
+                    user.email(), 
+                    user.passwordHash(),
+                    Role.CLIENT
+                );
+                
+                return userRepository.update(userId, activatedUser)
+                    .then(userEventPublisherPort.publishUserActivated(     // ← CORREGIDO: usar userEventPublisherPort
+                        new UserActivatedEvent(userId)                     // ← Pasar el evento completo
+                    ));
+            });
+    }
+
+    // Estos métodos NO pueden implementarse sin Order Service
+    @Override
+    public Mono<Boolean> userCanBeDeleted(UUID userId) {
+        // Por ahora, siempre permitir eliminación
+        return Mono.just(true);
+    }
+
+    @Override
+    public Mono<Boolean> userHasPendingOrders(UUID userId) {
+        // Por ahora, asumir que no tiene órdenes pendientes
+        return Mono.just(false);
+}
 }

@@ -13,7 +13,6 @@ import com.store.carts_microservice.domain.ports.out.ICartRepositoryPort;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartEntity;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartItemEntity;
 import com.store.carts_microservice.infrastructure.persistence.mapper.ICartEntityMapper;
-import com.store.carts_microservice.infrastructure.persistence.mapper.ICartItemEntityMapper;
 import com.store.carts_microservice.infrastructure.persistence.repository.ICartR2dbcRepository;
 import com.store.carts_microservice.infrastructure.persistence.repository.ICartItemR2dbcRepository;
 
@@ -24,25 +23,44 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
     private final ICartR2dbcRepository cartRepository;
     private final ICartItemR2dbcRepository cartItemRepository;
     private final ICartEntityMapper cartMapper;
-    private final ICartItemEntityMapper cartItemMapper;
+    // Eliminamos ICartItemEntityMapper y usamos métodos manuales
     
     @Override
-    public Mono<Cart> save(Cart cart) {
+    public Mono<Cart> create(Cart cart) {
         CartEntity cartEntity = cartMapper.toEntity(cart);
         
-        // Guardar el carrito primero
+        // ✅ FORZAR INSERT: Establecer ID como null para que Spring Data haga INSERT
+        cartEntity.setId(null);
+        
         return cartRepository.save(cartEntity)
             .flatMap(savedCart -> {
-                // Convertir items del dominio a entidades
                 List<CartItemEntity> itemEntities = cart.getItems().stream()
-                    .map(item -> {
-                        CartItemEntity itemEntity = cartItemMapper.toEntity(item);
-                        itemEntity.setCartId(savedCart.getId());
-                        return itemEntity;
-                    })
+                    .map(item -> toCartItemEntity(item, savedCart.getId())) // ✅ Mapper manual
                     .collect(Collectors.toList());
                 
-                // Eliminar items existentes y guardar los nuevos
+                return cartItemRepository.saveAll(itemEntities)
+                    .then(Mono.just(savedCart));
+            })
+            .flatMap(savedCart -> this.findByIdWithItems(savedCart.getId()));
+    }
+
+    @Override
+    public Mono<Cart> update(Cart cart) {
+        CartEntity cartEntity = cartMapper.toEntity(cart);
+        
+        // ✅ PARA UPDATE: Verificar que el cart existe primero
+        return cartRepository.existsById(cartEntity.getId())
+            .flatMap(exists -> {
+                if (!exists) {
+                    return Mono.error(new IllegalArgumentException("Cart not found with id: " + cartEntity.getId()));
+                }
+                return cartRepository.save(cartEntity);
+            })
+            .flatMap(savedCart -> {
+                List<CartItemEntity> itemEntities = cart.getItems().stream()
+                    .map(item -> toCartItemEntity(item, savedCart.getId())) // ✅ Mapper manual
+                    .collect(Collectors.toList());
+                
                 return cartItemRepository.deleteAllByCartId(savedCart.getId())
                     .thenMany(cartItemRepository.saveAll(itemEntities))
                     .then(Mono.just(savedCart));
@@ -67,6 +85,35 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
             .then(cartRepository.deleteById(id));
     }
     
+    // ✅ MÉTODOS MANUALES PARA CART ITEM MAPPING
+    private CartItemEntity toCartItemEntity(CartItem domain, UUID cartId) {
+        if (domain == null) {
+            return null;
+        }
+        
+        CartItemEntity entity = new CartItemEntity();
+        entity.setProductId(domain.productId());
+        entity.setQuantity(domain.quantity());
+        entity.setPrice(domain.price());
+        entity.setSubtotal(domain.subtotal());
+        entity.setCartId(cartId);
+        // El id se generará automáticamente
+        return entity;
+    }
+    
+    private CartItem toCartItemDomain(CartItemEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        
+        // Usar el método create del record CartItem
+        return CartItem.create(
+            entity.getProductId(),
+            entity.getQuantity(), 
+            entity.getPrice()
+        );
+    }
+    
     // Método auxiliar para cargar cart con items
     private Mono<Cart> findByIdWithItems(UUID cartId) {
         return cartRepository.findById(cartId)
@@ -78,8 +125,8 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
             .collectList()
             .map(itemEntities -> {
                 List<CartItem> cartItems = itemEntities.stream()
-                    .map(cartItemMapper::toDomain)
-                    .collect(java.util.stream.Collectors.toList());
+                    .map(this::toCartItemDomain) // ✅ Mapper manual
+                    .collect(Collectors.toList());
                 
                 return cartMapper.toDomainWithItems(cartEntity, cartItems);
             });

@@ -15,8 +15,18 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.exchange}")
     private String eventsExchangeName;
     
-    @Value("${app.rabbitmq.orders-saga-queue}")
-    private String ordersSagaQueueName;
+    // Usar las queues específicas en lugar de una sola
+    @Value("${app.rabbitmq.payment-processed-queue}")
+    private String paymentProcessedQueue;
+
+    @Value("${app.rabbitmq.payment-failed-queue}")
+    private String paymentFailedQueue;
+
+    @Value("${app.rabbitmq.stock-reserved-queue}")
+    private String stockReservedQueue;
+
+    @Value("${app.rabbitmq.stock-reservation-failed-queue}")
+    private String stockReservationFailedQueue;
 
     private static final String PAYMENT_PROCESSED_KEY = "payment.processed"; 
     private static final String PAYMENT_FAILED_KEY = "payment.failed"; 
@@ -31,15 +41,32 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    // Crear queues separadas
     @Bean
-    public Queue ordersSagaQueue() {
-        return new Queue(ordersSagaQueueName, true);
+    public Queue paymentProcessedQueue() {
+        return new Queue(paymentProcessedQueue, true);
     }
 
     @Bean
+    public Queue paymentFailedQueue() {
+        return new Queue(paymentFailedQueue, true);
+    }
+
+    @Bean
+    public Queue stockReservedQueue() {
+        return new Queue(stockReservedQueue, true);
+    }
+
+    @Bean
+    public Queue stockReservationFailedQueue() {
+        return new Queue(stockReservationFailedQueue, true);
+    }
+
+    // Bindings para queues separadas
+    @Bean
     public Binding bindingPaymentProcessed() {
         return BindingBuilder
-                .bind(ordersSagaQueue())
+                .bind(paymentProcessedQueue())
                 .to(eventsExchange())
                 .with(PAYMENT_PROCESSED_KEY)
                 .noargs();
@@ -48,7 +75,7 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingPaymentFailed() {
         return BindingBuilder
-                .bind(ordersSagaQueue())
+                .bind(paymentFailedQueue())
                 .to(eventsExchange())
                 .with(PAYMENT_FAILED_KEY)
                 .noargs();
@@ -57,7 +84,7 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingStockReserved() {
         return BindingBuilder
-                .bind(ordersSagaQueue())
+                .bind(stockReservedQueue())
                 .to(eventsExchange())
                 .with(STOCK_RESERVED_KEY)
                 .noargs();
@@ -66,7 +93,7 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingStockReservationFailed() {
         return BindingBuilder
-                .bind(ordersSagaQueue())
+                .bind(stockReservationFailedQueue())
                 .to(eventsExchange())
                 .with(STOCK_RESERVATION_FAILED_KEY)
                 .noargs();

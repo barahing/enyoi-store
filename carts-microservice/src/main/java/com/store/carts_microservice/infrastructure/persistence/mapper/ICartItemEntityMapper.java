@@ -1,19 +1,38 @@
 package com.store.carts_microservice.infrastructure.persistence.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import java.util.UUID;
+
+import org.springframework.stereotype.Component;
 
 import com.store.carts_microservice.domain.model.CartItem;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartItemEntity;
 
-@Mapper(componentModel = "spring")
-public interface ICartItemEntityMapper {
+@Component
+public class ICartItemEntityMapper {
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "cartId", ignore = true)
-    CartItemEntity toEntity(CartItem domain);
+    public CartItemEntity toEntity(CartItem domain, UUID cartId) {
+        if (domain == null) {
+            return null;
+        }
+        
+        CartItemEntity entity = new CartItemEntity();
+        entity.setProductId(domain.productId());
+        entity.setQuantity(domain.quantity());
+        entity.setPrice(domain.price());
+        entity.setSubtotal(domain.subtotal());
+        entity.setCartId(cartId);
+        return entity;
+    }
 
-    @Mapping(target = "withUpdatedQuantity", ignore = true)
-    @Mapping(target = "withUpdatedPrice", ignore = true)
-    CartItem toDomain(CartItemEntity entity);
+    public CartItem toDomain(CartItemEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        
+        return CartItem.create(
+            entity.getProductId(),
+            entity.getQuantity(), 
+            entity.getPrice()
+        );
+    }
 }

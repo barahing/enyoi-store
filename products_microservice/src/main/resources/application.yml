@@ -23,8 +23,12 @@ eureka:
     fetch-registry: true
     register-with-eureka: true
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: false
     hostname: localhost
+    ip-address: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+    metadata-map:
+      instanceId: ${spring.application.name}:${server.port}
 
 management:
   endpoints:

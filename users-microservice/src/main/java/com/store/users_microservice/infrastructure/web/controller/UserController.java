@@ -62,4 +62,27 @@ public class UserController {
                 .thenReturn(ResponseEntity.ok(Map.of("status", "deleted", "id", userId.toString())));
     }
 
+    @PutMapping("/{userId}/deactivate")
+    public Mono<ResponseEntity<Map<String, String>>> deactivateUser(@Valid @PathVariable("userId") UUID userId) {
+        return userUseCases.deactivateUser(userId)
+                .thenReturn(ResponseEntity.ok(Map.of("status", "deactivated", "id", userId.toString())));
+    }
+
+    @PutMapping("/{userId}/activate") 
+    public Mono<ResponseEntity<Map<String, String>>> activateUser(@Valid @PathVariable("userId") UUID userId) {
+        return userUseCases.activateUser(userId)
+                .thenReturn(ResponseEntity.ok(Map.of("status", "activated", "id", userId.toString())));
+    }
+
+    @GetMapping("/{userId}/can-be-deleted")
+    public Mono<ResponseEntity<Map<String, Boolean>>> userCanBeDeleted(@Valid @PathVariable("userId") UUID userId) {
+        return userUseCases.userCanBeDeleted(userId)
+                .map(canBeDeleted -> ResponseEntity.ok(Map.of("canBeDeleted", canBeDeleted)));
+    }
+
+    @GetMapping("/{userId}/has-pending-orders")
+    public Mono<ResponseEntity<Map<String, Boolean>>> userHasPendingOrders(@Valid @PathVariable("userId") UUID userId) {
+        return userUseCases.userHasPendingOrders(userId)
+                .map(hasPendingOrders -> ResponseEntity.ok(Map.of("hasPendingOrders", hasPendingOrders)));
+    }
 }

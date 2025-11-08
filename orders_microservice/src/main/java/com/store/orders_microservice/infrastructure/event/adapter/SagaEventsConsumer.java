@@ -1,12 +1,15 @@
 package com.store.orders_microservice.infrastructure.event.adapter;
 
 import java.util.UUID;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import com.store.common.events.CartConvertedEvent;
+import com.store.common.events.OrderCreatedEvent;
 import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
 import com.store.common.events.StockReservationFailedEvent;
@@ -129,5 +132,49 @@ public class SagaEventsConsumer {
                 log.error("Error processing Saga event {} for Order ID {}: {}", eventName, orderId, e.getMessage());
                 return Mono.empty();
             });
+    }
+
+
+    @RabbitListener(queues = "${app.rabbitmq.cart-converted-queue}")
+    public void handleCartConverted(CartConvertedEvent event) {
+        log.info("Received CartConvertedEvent: {}", event);
+        
+        // Crear lista de items con tipo explícito
+        List<Order.OrderItem> orderItems = event.items().stream()
+            .map((CartConvertedEvent.CartItemData item) -> 
+                Order.OrderItem.create(
+                    item.productId(),
+                    item.quantity(), 
+                    item.price()
+                )
+            )
+            .collect(Collectors.toList());
+        
+        // Crear nueva orden
+        Order newOrder = Order.createOrder(
+            UUID.randomUUID(),
+            event.clientId(),
+            orderItems,
+            event.totalAmount()
+        );
+        
+        orderRepositoryPort.save(newOrder)
+            .doOnSuccess(order -> {
+                log.info("Created new order from cart: {}", order.getOrderId());
+                
+                // Publicar OrderCreatedEvent
+                eventPublisherPort.publishOrderCreatedEvent(
+                    new com.store.common.events.OrderCreatedEvent(
+                        order.getOrderId(),
+                        order.getClientId(),
+                        order.getItems().stream()
+                            .map(item -> new ProductStockDTO(item.getProductId(), item.getQuantity()))
+                            .collect(Collectors.toList())
+                    )
+                );
+            })
+            .doOnError(error -> log.error("Error creating order from cart: {}", error.getMessage()))
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe();
     }
 }

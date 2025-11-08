@@ -48,8 +48,13 @@ app:
   rabbitmq:
     exchange: store.events
     orders-saga-queue: orders-saga-queue
-    
-    order-created-key: order.created 
-    reserve-stock-command-key: stock.reserve 
-    process-payment-command-key: payment.process 
-    complete-order-command-key: order.complete 
+    payment-processed-queue: payment-processed-queue
+    payment-failed-queue: payment-failed-queue
+    stock-reserved-queue: stock-reserved-queue
+    stock-reservation-failed-queue: stock-reservation-failed-queue    
+    order-created-key: order.created
+    order-confirmed-key: order.confirmed
+    order-cancelled-key: order.cancelled
+    process-payment-key: payment.process
+    reserve-stock-key: stock.reserve
+    release-stock-key: stock.release

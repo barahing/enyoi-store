@@ -1,6 +1,7 @@
 package com.store.carts_microservice.infrastructure.web.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import java.util.UUID;
@@ -17,22 +18,53 @@ public class CartController {
     private final ICartServicePort cartService;
 
     @PostMapping("/client/{clientId}")
-    public Mono<Cart> createCart(@PathVariable UUID clientId) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<Cart> createCart(@PathVariable("clientId") UUID clientId) {
         return cartService.createCartForClient(clientId);
     }
 
     @GetMapping("/client/{clientId}/active")
-    public Mono<Cart> getActiveCart(@PathVariable UUID clientId) {
+    public Mono<Cart> getActiveCart(@PathVariable("clientId") UUID clientId) {
         return cartService.getActiveCartByClientId(clientId);
     }
 
+    @GetMapping("/{cartId}")
+    public Mono<Cart> getCart(@PathVariable("cartId") UUID cartId) {
+        return cartService.findById(cartId); 
+    }
+
+    @GetMapping("/client/{clientId}")
+    public Mono<Cart> getCartByClientId(@PathVariable("clientId") UUID clientId) {
+    return cartService.getActiveCartByClientId(clientId);
+    }
+
     @PostMapping("/{cartId}/items")
-    public Mono<Cart> addItem(@PathVariable UUID cartId, @RequestBody CartItem item) {
+    public Mono<Cart> addItem(@PathVariable("cartId") UUID cartId, @RequestBody CartItem item) {
         return cartService.addProductToCart(cartId, item);
     }
 
-    @PutMapping("/{cartId}/convert-to-order")
-    public Mono<Cart> convertToOrder(@PathVariable UUID cartId) {
+    @PutMapping("/{cartId}/items/{productId}")
+    public Mono<Cart> updateItemQuantity(
+            @PathVariable UUID cartId, 
+            @PathVariable UUID productId, 
+            @RequestParam int quantity) {
+        return cartService.updateItemQuantity(cartId, productId, quantity);
+    }
+
+    @DeleteMapping("/{cartId}/items/{productId}")
+    public Mono<Cart> removeItem(@PathVariable("cartId") UUID cartId, @PathVariable("productId") UUID productId) {
+        return cartService.removeProductFromCart(cartId, productId);
+    }
+
+    @DeleteMapping("/{cartId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> deleteCart(@PathVariable("cartId") UUID cartId) {
+        return cartService.deleteCart(cartId);
+    }
+
+    @PostMapping("/{cartId}/convert-to-order")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Mono<Cart> convertToOrder(@PathVariable("cartId") UUID cartId) {
         return cartService.convertCartToOrder(cartId);
     }
 }

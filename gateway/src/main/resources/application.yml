@@ -4,31 +4,70 @@ server:
 spring:
   application:
     name: api-gateway
-
+  
   cloud:
+    # ✅ CONFIGURACIÓN MODERNA
     gateway:
       discovery:
         locator:
-          enabled: true
-          lower-case-service-id: true
+          enabled: false  # No usar auto-discovery, mejor rutas explícitas
       routes:
         - id: user-service
-          uri: lb://user-service
+          uri: lb://user-service  # ✅ LOAD BALANCER
           predicates:
             - Path=/api/users/**
           filters:
             - StripPrefix=0
 
+        - id: inventory-microiservice
+          uri: lb://inventory-microservice  # ✅ LOAD BALANCER
+          predicates:
+            - Path=/api/stock/**
+          filters:
+            - StripPrefix=0
+
+        - id: carts-service
+          uri: lb://carts-service  # ✅ LOAD BALANCER
+          predicates:
+            - Path=/api/carts/**
+          filters:
+            - StripPrefix=0
+
+        - id: product-service
+          uri: lb://product-service  # ✅ LOAD BALANCER
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=0
+            
+    # ✅ LOAD BALANCER CONFIG
+    loadbalancer:
+      enabled: true
+
+# ✅ EUREKA CONFIG
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  
   instance:
-    prefer-ip-address: true
     hostname: localhost
+    prefer-ip-address: false
 
+# ✅ MANAGEMENT
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,gateway,routes
+    gateway:
+      enabled: true
+
+# ✅ LOGGING PARA DEBUG
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
+    reactor.netty: DEBUG

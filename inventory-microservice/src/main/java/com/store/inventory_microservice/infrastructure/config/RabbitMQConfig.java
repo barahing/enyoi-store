@@ -22,9 +22,12 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.release-stock-command-queue}")
     private String releaseStockQueueName;
 
-    // AÑADIDA: Cola para la confirmación de la reserva tras pago exitoso
     @Value("${app.rabbitmq.payment-processed-queue}") 
     private String paymentProcessedQueueName;
+
+    // NUEVA: Cola para ReserveStockCommand
+    @Value("${app.rabbitmq.reserve-stock-command-queue}")
+    private String reserveStockCommandQueueName;
 
     @Bean
     public Exchange eventsExchange() {
@@ -51,9 +54,15 @@ public class RabbitMQConfig {
         return new Queue(paymentProcessedQueueName, true); 
     }
     
+    // NUEVA: Queue para ReserveStockCommand
+    @Bean
+    public Queue reserveStockCommandQueue() {
+        return new Queue(reserveStockCommandQueueName, true);
+    }
+    
     // --- Bindings para Consumir Eventos ---
 
-    // 1. Reserva de Stock
+    // 1. OrderCreatedEvent (para reserva inicial de stock)
     @Bean
     public Binding bindingOrderCreatedQueueToExchange() {
         return BindingBuilder
@@ -63,7 +72,17 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
-    // 2. Rollback
+    // 2. ReserveStockCommand (comando directo para reservar stock)
+    @Bean
+    public Binding bindingReserveStockCommandQueueToExchange() {
+        return BindingBuilder
+                .bind(reserveStockCommandQueue())
+                .to(eventsExchange())
+                .with("stock.reserve") 
+                .noargs();
+    }
+
+    // 3. ReleaseStockCommand (Rollback)
     @Bean
     public Binding bindingReleaseStockCommandQueueToExchange() {
         return BindingBuilder
@@ -73,7 +92,7 @@ public class RabbitMQConfig {
                 .noargs();
     }
     
-    // 3. Confirmación (Deducción final del stock)
+    // 4. PaymentProcessedEvent (Confirmación - Deducción final del stock)
     @Bean
     public Binding bindingPaymentProcessedQueueToExchange() {
         return BindingBuilder

@@ -14,4 +14,6 @@ public interface ICartServicePort {
     Mono<Cart> removeProductFromCart(UUID cartId, UUID productId);
     Mono<Void> deleteCart(UUID id);
     Mono<Cart> convertCartToOrder(UUID cartId);
+    Mono<Cart> findById(UUID cartId);
+    Mono<Void> deleteUserCart(UUID clientId);
 }

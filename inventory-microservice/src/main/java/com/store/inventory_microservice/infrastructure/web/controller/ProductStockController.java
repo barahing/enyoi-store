@@ -62,4 +62,14 @@ public class ProductStockController {
         return stockServicePort.updateInitialStock(productId, requestDto.getInitialStock())
                 .map(stockMapper::toDto);
     }
-}
+
+    @GetMapping("/{productId}/available/{quantity}")
+    public Mono<Boolean> isQuantityAvailable(
+        @PathVariable UUID productId, 
+        @PathVariable int quantity) {
+        
+        return stockServicePort.getStockByProductId(productId)
+            .map(stock -> stock.getCurrentStock() >= quantity)
+            .defaultIfEmpty(false);
+    }
+}    

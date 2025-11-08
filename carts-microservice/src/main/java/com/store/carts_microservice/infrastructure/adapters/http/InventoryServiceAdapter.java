@@ -13,12 +13,13 @@ import com.store.carts_microservice.domain.ports.out.IInventoryServicePort;
 public class InventoryServiceAdapter implements IInventoryServicePort {
     
     private final WebClient.Builder webClientBuilder;
-    
+    private final String inventoryServiceUrl = "http://inventory-microservice/api/stock";
+
     @Override
     public Mono<Boolean> isQuantityAvailable(UUID productId, int quantity) {
         return webClientBuilder.build()
             .get()
-            .uri("http://inventory-service/api/inventory/{productId}/available/{quantity}", 
+            .uri(inventoryServiceUrl+"/{productId}/available/{quantity}", 
                  productId, quantity)
             .retrieve()
             .bodyToMono(Boolean.class)
@@ -27,20 +28,14 @@ public class InventoryServiceAdapter implements IInventoryServicePort {
     
     @Override
     public Mono<Void> reserveStock(UUID productId, int quantity) {
-        return webClientBuilder.build()
-            .post()
-            .uri("http://inventory-service/api/inventory/{productId}/reserve/{quantity}", 
-                 productId, quantity)
-            .retrieve()
-            .bodyToMono(Void.class)
-            .onErrorResume(e -> Mono.empty()); // Si falla, continuamos sin error
+        return Mono.empty();
     }
     
     @Override
     public Mono<Void> releaseStockReservation(UUID productId, int quantity) {
         return webClientBuilder.build()
             .post()
-            .uri("http://inventory-service/api/inventory/{productId}/release/{quantity}", 
+            .uri(inventoryServiceUrl+"/{productId}/release/{quantity}", 
                  productId, quantity)
             .retrieve()
             .bodyToMono(Void.class)

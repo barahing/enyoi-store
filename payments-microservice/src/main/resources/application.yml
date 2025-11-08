@@ -39,6 +39,11 @@ eureka:
   instance:
     prefer-ip-address: true
     hostname: localhost
+    ip-address: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+    metadata-map:
+      instanceId: ${spring.application.name}:${server.port}
+
     
 management:
   endpoints:
