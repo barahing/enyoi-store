@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.store.common.dto.ProductStockDTO;
 import com.store.common.events.StockReservationFailedEvent;
 import com.store.common.events.StockReservedEvent;
+import com.store.inventory_microservice.domain.exception.DuplicateReservationException;
 import com.store.inventory_microservice.domain.exception.ProductAlreadyExistsException;
 import com.store.inventory_microservice.domain.exception.ProductCatalogMismatchException;
 import com.store.inventory_microservice.domain.exception.StockNotFoundException;
@@ -40,19 +41,16 @@ public class ProductStockService implements IProductStockServicePort {
         return productCatalogPort.productExists(productId)
             .filter(Boolean::booleanValue)
             .switchIfEmpty(Mono.error(new ProductCatalogMismatchException(productId, "Creation request failed")))
-            .flatMap(exists -> 
+            .flatMap(exists ->
                 persistencePort.findByProductId(productId)
-                    .flatMap(existingStock -> {
-                        log.warn("Attempt to create stock for existing product: {}", productId);
-                        // **CLAVE para el 409 CONFLICT (el Mono.error con el tipo explícito)**
-                        return Mono.<ProductStock>error(new ProductAlreadyExistsException(productId));
-                    })
+                    .flatMap(existing -> Mono.<ProductStock>error(new ProductAlreadyExistsException(productId)))
                     .switchIfEmpty(Mono.defer(() -> {
-                        ProductStock newStock = ProductStock.create(productId, initialStock); 
+                        ProductStock newStock = ProductStock.create(productId, initialStock);
                         return persistencePort.create(newStock);
                     }))
             );
     }
+
     
     @Override
     public Mono<ProductStock> updateInitialStock(UUID productId, int newInitialStock) {
@@ -76,29 +74,69 @@ public class ProductStockService implements IProductStockServicePort {
 
     @Override
     public Mono<Void> processOrderCreation(UUID orderId, List<ProductStockDTO> products) {
-        
+
         Flux<StockReservation> reservationFlux = Flux.fromIterable(products)
-            .flatMap(productDto -> 
+            .flatMap(productDto ->
                 productCatalogPort.productExists(productDto.productId())
                     .filter(Boolean::booleanValue)
-                    .switchIfEmpty(Mono.error(new ProductCatalogMismatchException(productDto.productId(), "Order product not found")))
-                    .flatMap(exists -> 
+                    .switchIfEmpty(Mono.error(
+                        new ProductCatalogMismatchException(productDto.productId(), "Order product not found")
+                    ))
+                    .flatMap(exists ->
                         persistencePort.findByProductId(productDto.productId())
-                            .switchIfEmpty(Mono.error(new StockNotFoundException("Product not found in stock: " + productDto.productId())))
+                            .switchIfEmpty(Mono.error(
+                                new StockNotFoundException("Product not found in stock: " + productDto.productId())
+                            ))
                             .flatMap(stock -> {
-                                if (stock.canReserve(productDto.quantity())) {
-                                    stock.reserveStock(productDto.quantity()); 
-                                    
-                                    StockReservation reservation = StockReservation.create(
-                                        orderId, 
-                                        stock.getProductId(), 
-                                        productDto.quantity()
-                                    );
-                                    
-                                    return persistencePort.update(stock).then(persistencePort.saveReservation(reservation));
-                                } else {
-                                    return Mono.error(new RuntimeException("Insufficient stock for product " + productDto.productId()));
+
+                                // Validar disponibilidad
+                                if (!stock.canReserve(productDto.quantity())) {
+                                    return Mono.error(new RuntimeException(
+                                        "Insufficient stock for product " + productDto.productId()));
                                 }
+
+                                // 1️⃣ Reservar en dominio
+                                stock.reserveStock(productDto.quantity());
+
+                                // 2️⃣ Crear el objeto de reserva (sin ID, DB lo genera)
+                                StockReservation reservation = StockReservation.create(
+                                    orderId,
+                                    stock.getProductId(),
+                                    productDto.quantity()
+                                );
+
+                                // 3️⃣ Verificar si ya existe la reserva (idempotencia de negocio)
+                                return persistencePort.findReservationsByOrderId(orderId)
+                                    .filter(existing -> existing.getProductId().equals(stock.getProductId()))
+                                    .hasElements()
+                                    .flatMap(existsReservation -> {
+                                        if (existsReservation) {
+                                            log.warn("♻️ Reservation already exists for order {} and product {}, skipping.",
+                                                    orderId, stock.getProductId());
+                                            return Mono.empty();
+                                        }
+
+                                        // 4️⃣ Actualizar stock y crear la reserva
+                                        return persistencePort.update(stock)
+                                            .then(persistencePort.createReservation(reservation)
+                                                // 5️⃣ Manejo de error concurrente (clave duplicada)
+                                                .onErrorResume(e -> {
+                                                    String msg = e.getMessage() != null ? e.getMessage() : "";
+
+                                                    if (msg.contains("stock_reservations_order_id_product_id_key")) {
+                                                        log.warn("♻️ Concurrent duplicate insert detected for order {} and product {}, skipping.",
+                                                                orderId, stock.getProductId());
+                                                        return Mono.empty(); // ignora duplicado
+                                                    }
+
+                                                    if (e instanceof DuplicateReservationException) {
+                                                        log.warn("♻️ Duplicate reservation detected concurrently, skipping insert.");
+                                                        return Mono.empty();
+                                                    }
+
+                                                    return Mono.error(e);
+                                                }));
+                                    });
                             })
                     )
             );
@@ -106,14 +144,23 @@ public class ProductStockService implements IProductStockServicePort {
         return reservationFlux
             .collectList()
             .flatMap(reservations -> {
+                // ✅ Publicar evento solo si hubo nuevas reservas
+                if (reservations.isEmpty()) {
+                    log.info("No new stock reservations created for Order {}", orderId);
+                    return Mono.empty();
+                }
+
                 StockReservedEvent successEvent = new StockReservedEvent(orderId);
                 return eventPublisherPort.publishStockReservedEvent(successEvent);
             })
             .onErrorResume(e -> {
+                // ❌ Fallback: error general en el proceso de reserva
                 log.error("Stock reservation failed for Order ID {}: {}", orderId, e.getMessage());
-                
-                StockReservationFailedEvent failureEvent = new StockReservationFailedEvent(orderId, e.getMessage());
-                
+
+                StockReservationFailedEvent failureEvent =
+                    new StockReservationFailedEvent(orderId, e.getMessage());
+
+                // Liberar reservas parciales y notificar fallo
                 return persistencePort.findReservationsByOrderId(orderId)
                     .flatMap(persistencePort::deleteReservation)
                     .then(eventPublisherPort.publishStockReservationFailedEvent(failureEvent));
@@ -121,16 +168,19 @@ public class ProductStockService implements IProductStockServicePort {
             .then();
     }
 
+
+
+
     @Override
     public Mono<Void> releaseOrderStock(UUID orderId, List<ProductStockDTO> products) {
         log.warn("Releasing stock for Order ID: {}", orderId);
-        
+
         return persistencePort.findReservationsByOrderId(orderId)
-            .flatMap(reservation -> 
+            .flatMap(reservation ->
                 persistencePort.findByProductId(reservation.getProductId())
                     .flatMap(stock -> {
                         stock.releaseReservedStock(reservation.getQuantity());
-                        
+
                         return persistencePort.update(stock)
                             .then(persistencePort.deleteReservation(reservation));
                     })
@@ -139,24 +189,24 @@ public class ProductStockService implements IProductStockServicePort {
             .doOnError(e -> log.error("Error during stock release for Order {}: {}", orderId, e.getMessage()));
     }
 
+
     @Override
     public Mono<Void> confirmStockReservation(UUID orderId) {
         log.info("Confirming stock reservations for Order ID: {}", orderId);
-        
+
         return persistencePort.findReservationsByOrderId(orderId)
-            .flatMap(reservation -> {
-                
-                return persistencePort.findByProductId(reservation.getProductId())
+            .flatMap(reservation ->
+                persistencePort.findByProductId(reservation.getProductId())
                     .flatMap(stock -> {
                         stock.confirmReservation(reservation.getQuantity());
-                        
                         return persistencePort.update(stock)
                             .then(persistencePort.deleteReservation(reservation));
-                    });
-            })
+                    })
+            )
             .then()
             .doOnError(e -> log.error("Error confirming stock reservation for Order {}: {}", orderId, e.getMessage()));
     }
+
 
     @Override
     public Flux<ProductStock> getAllStocks() {
@@ -167,8 +217,7 @@ public class ProductStockService implements IProductStockServicePort {
     @Override
     public Mono<Boolean> isQuantityAvailable(UUID productId, int quantity) {
         return persistencePort.findByProductId(productId)
-            .map(stock -> stock.getCurrentStock() >= quantity)
+            .map(stock -> stock.canReserve(quantity))
             .defaultIfEmpty(false);
     }
-
 }

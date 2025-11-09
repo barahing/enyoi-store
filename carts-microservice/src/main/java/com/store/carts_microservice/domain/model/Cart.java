@@ -8,10 +8,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class Cart {
 
     private UUID cartId;
@@ -21,10 +23,11 @@ public class Cart {
     private CartStatus status;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
+    private UUID orderId;
 
-    // Constructor para la Factory - mantiene inmutabilidad en creación
-    public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total, 
-                CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate) {
+    // Constructor principal
+    public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total,
+                CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate, UUID orderId) {
         this.cartId = cartId;
         this.clientId = clientId;
         this.items = new ArrayList<>(items); // Copia defensiva
@@ -32,9 +35,16 @@ public class Cart {
         this.status = status;
         this.createdDate = createdDate;
         this.updatedDate = updatedDate;
+        this.orderId = orderId;
     }
 
-    // ✅ NUEVO: Método para asignar items después de cargar desde BD
+    // Constructor sin orderId (para backward compatibility con la factory)
+    public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total,
+                CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate) {
+        this(cartId, clientId, items, total, status, createdDate, updatedDate, null);
+    }
+
+    // ✅ Método para reasignar items después de cargar desde BD
     public void setItems(List<CartItem> items) {
         this.items = new ArrayList<>(items);
         recalculateTotal();
@@ -110,6 +120,7 @@ public class Cart {
         this.status = CartStatus.CONVERTING;
         this.updatedDate = LocalDateTime.now();
     }
+
 
     public void markAsConverted() {
         if (this.status != CartStatus.ACTIVE && this.status != CartStatus.CONVERTING) {

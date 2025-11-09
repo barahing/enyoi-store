@@ -1,7 +1,6 @@
 package com.store.orders_microservice.infrastructure.event.adapter;
 
 import java.util.UUID;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,15 +8,20 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import com.store.common.events.CartConvertedEvent;
+import com.store.common.events.OrderConfirmedEvent;
 import com.store.common.events.OrderCreatedEvent;
 import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
 import com.store.common.events.StockReservationFailedEvent;
 import com.store.common.events.StockReservedEvent;
 import com.store.common.commands.ReleaseStockCommand;
+import com.store.common.commands.ReserveStockCommand;
 import com.store.common.dto.ProductStockDTO;
 import com.store.orders_microservice.domain.exception.OrderNotFoundException;
+import com.store.orders_microservice.domain.factory.OrderFactory;
 import com.store.orders_microservice.domain.model.Order;
+import com.store.orders_microservice.domain.model.OrderItem; 
+import com.store.orders_microservice.domain.model.OrderStatus;
 import com.store.orders_microservice.domain.ports.out.IEventPublisherPort;
 import com.store.orders_microservice.domain.ports.out.IOrderRepositoryPort;
 
@@ -43,7 +47,7 @@ public class SagaEventsConsumer {
                 order.handlePaymentApproved(); 
                 
                 // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
-                if (order.getStatus().toString().equals("CONFIRMED")) {
+                if (order.getStatus() == OrderStatus.CONFIRMED) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
                         new com.store.common.events.OrderConfirmedEvent(order.getOrderId(), order.getClientId())
                     );
@@ -91,9 +95,9 @@ public class SagaEventsConsumer {
                 order.handleStockReserved();
                 
                 // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
-                if (order.getStatus().toString().equals("CONFIRMED")) {
+                if (order.getStatus() == OrderStatus.CONFIRMED) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
-                        new com.store.common.events.OrderConfirmedEvent(order.getOrderId(), order.getClientId())
+                        new OrderConfirmedEvent(order.getOrderId(), order.getClientId())
                     );
                 }
                 return Mono.empty();
@@ -134,47 +138,57 @@ public class SagaEventsConsumer {
             });
     }
 
-
     @RabbitListener(queues = "${app.rabbitmq.cart-converted-queue}")
     public void handleCartConverted(CartConvertedEvent event) {
-        log.info("Received CartConvertedEvent: {}", event);
+        log.info("🎯 [ORDERS] Received CartConvertedEvent for ClientId: {}", event.clientId());
         
-        // Crear lista de items con tipo explícito
-        List<Order.OrderItem> orderItems = event.items().stream()
-            .map((CartConvertedEvent.CartItemData item) -> 
-                Order.OrderItem.create(
-                    item.productId(),
-                    item.quantity(), 
-                    item.price()
-                )
+        // 1️⃣ Crear la nueva orden a partir del carrito convertido
+        orderRepositoryPort.save(
+            OrderFactory.createNew(
+                event.clientId(),
+                event.items().stream()
+                    .map(itemData -> OrderItem.create(
+                        itemData.productId(),
+                        itemData.quantity(),
+                        itemData.price()
+                    ))
+                    .collect(Collectors.toList())
             )
-            .collect(Collectors.toList());
-        
-        // Crear nueva orden
-        Order newOrder = Order.createOrder(
-            UUID.randomUUID(),
-            event.clientId(),
-            orderItems,
-            event.totalAmount()
-        );
-        
-        orderRepositoryPort.save(newOrder)
-            .doOnSuccess(order -> {
-                log.info("Created new order from cart: {}", order.getOrderId());
-                
-                // Publicar OrderCreatedEvent
-                eventPublisherPort.publishOrderCreatedEvent(
-                    new com.store.common.events.OrderCreatedEvent(
-                        order.getOrderId(),
-                        order.getClientId(),
-                        order.getItems().stream()
-                            .map(item -> new ProductStockDTO(item.getProductId(), item.getQuantity()))
-                            .collect(Collectors.toList())
-                    )
+        )
+        .doOnSuccess(savedOrder -> {
+            log.info("✅ [ORDERS] Order created with ID: {}", savedOrder.getOrderId());
+
+            // 2️⃣ Armar lista de productos para los comandos/eventos siguientes
+            List<ProductStockDTO> productList = savedOrder.getItems().stream()
+                .map(item -> new ProductStockDTO(item.productId(), item.quantity()))
+                .collect(Collectors.toList());
+
+            // 3️⃣ Publicar evento OrderCreatedEvent
+            OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent();
+            orderCreatedEvent.setOrderId(savedOrder.getOrderId());
+            orderCreatedEvent.setUserId(savedOrder.getClientId());
+            orderCreatedEvent.setAmount(savedOrder.getTotal());
+            orderCreatedEvent.setProducts(productList);
+
+            log.info("📨 [ORDERS] Publishing OrderCreatedEvent for orderId={}", savedOrder.getOrderId());
+            eventPublisherPort.publishOrderCreatedEvent(orderCreatedEvent)
+                .then(
+                    // 4️⃣ Publicar comando ReserveStockCommand
+                    Mono.defer(() -> {
+                        ReserveStockCommand reserveCommand = new ReserveStockCommand(savedOrder.getOrderId(), productList);
+                        log.info("📦 [ORDERS] Publishing ReserveStockCommand for orderId={}", savedOrder.getOrderId());
+                        return eventPublisherPort.publishReserveStockCommand(reserveCommand);
+                    })
+                )
+                .subscribe(
+                    v -> log.info("✅ [ORDERS] OrderCreated and ReserveStockCommand published for orderId={}", savedOrder.getOrderId()),
+                    e -> log.error("❌ [ORDERS] Error publishing events for orderId {}: {}", savedOrder.getOrderId(), e.getMessage())
                 );
-            })
-            .doOnError(error -> log.error("Error creating order from cart: {}", error.getMessage()))
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
+        })
+        .doOnError(error -> log.error("❌ [ORDERS] Failed to create order from CartConvertedEvent: {}", error.getMessage(), error))
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
     }
+
+
 }

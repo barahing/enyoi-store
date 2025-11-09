@@ -16,13 +16,13 @@ public class StockReservation {
     int quantity;
     LocalDateTime reservedAt;
 
-    public static StockReservation create(UUID orderId, UUID productId, int quantity) {
-        return StockReservation.builder()
-            .id(UUID.randomUUID())
-            .orderId(orderId)
-            .productId(productId)
-            .quantity(quantity)
-            .reservedAt(LocalDateTime.now())
-            .build();
+    public static StockReservation create(UUID orderId, UUID productId, Integer quantity) {
+        return new StockReservation(
+            null,  
+            orderId,
+            productId, 
+            quantity,
+            LocalDateTime.now()
+        );
     }
 }

@@ -6,13 +6,11 @@ import java.util.List;
 import java.util.UUID;
 
 public record CartConvertedEvent(
-    UUID orderId,
     UUID clientId,
     BigDecimal total,
     LocalDateTime conversionDate,
     List<CartItemData> items,
-    String paymentMethod 
-
+    String paymentMethod
 ) {
     public record CartItemData(
         UUID productId,

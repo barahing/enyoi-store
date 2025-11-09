@@ -5,6 +5,8 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,10 +30,14 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.stock-reservation-failed-queue}")
     private String stockReservationFailedQueue;
 
+    @Value("${app.rabbitmq.cart-converted-queue}")  // 👈 AÑADE ESTO
+    private String cartConvertedQueue;
+
     private static final String PAYMENT_PROCESSED_KEY = "payment.processed"; 
     private static final String PAYMENT_FAILED_KEY = "payment.failed"; 
     private static final String STOCK_RESERVED_KEY = "stock.reserved"; 
     private static final String STOCK_RESERVATION_FAILED_KEY = "stock.failed"; 
+    private static final String CART_CONVERTED_KEY = "cart.converted.event";  // 👈 AÑADE ESTO
 
     @Bean
     public Exchange eventsExchange() {
@@ -60,6 +66,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue stockReservationFailedQueue() {
         return new Queue(stockReservationFailedQueue, true);
+    }
+
+    @Bean  // 👈 AÑADE ESTE BEAN
+    public Queue cartConvertedQueue() {
+        return new Queue(cartConvertedQueue, true);
     }
 
     // Bindings para queues separadas
@@ -98,4 +109,18 @@ public class RabbitMQConfig {
                 .with(STOCK_RESERVATION_FAILED_KEY)
                 .noargs();
     }
+
+    @Bean  // 👈 AÑADE ESTE BINDING
+    public Binding bindingCartConverted() {
+        return BindingBuilder
+                .bind(cartConvertedQueue())
+                .to(eventsExchange())
+                .with(CART_CONVERTED_KEY)
+                .noargs();
+    }
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+}
 }

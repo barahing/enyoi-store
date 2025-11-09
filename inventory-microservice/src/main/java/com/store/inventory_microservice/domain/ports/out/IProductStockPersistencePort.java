@@ -15,7 +15,8 @@ public interface IProductStockPersistencePort {
     Mono<ProductStock> update(ProductStock stock);
     Mono<ProductStock> findByProductId(UUID productId);
 
-    Mono<StockReservation> saveReservation(StockReservation reservation);
+    Mono<StockReservation> createReservation(StockReservation reservation);
+    Mono<StockReservation> updateReservation(StockReservation reservation);
     Flux<StockReservation> findReservationsByOrderId(UUID orderId);
     Mono<Void> deleteReservation(StockReservation reservation);
 }

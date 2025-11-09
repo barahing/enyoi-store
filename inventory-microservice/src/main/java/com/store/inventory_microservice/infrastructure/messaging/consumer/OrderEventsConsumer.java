@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import com.store.common.commands.ReleaseStockCommand;
 import com.store.common.commands.ReserveStockCommand;
 import com.store.common.events.OrderCreatedEvent;
-import com.store.common.events.PaymentProcessedEvent; 
+import com.store.common.events.PaymentProcessedEvent;
 import com.store.inventory_microservice.domain.ports.in.IProductStockServicePort;
 
 import lombok.RequiredArgsConstructor;
@@ -18,58 +18,51 @@ import reactor.core.scheduler.Schedulers;
 @Slf4j
 public class OrderEventsConsumer {
 
-    private final IProductStockServicePort productStockService; 
+    private final IProductStockServicePort productStockService;
 
+    // 1️⃣ Evento: se crea la orden → inicia el proceso normal de reserva
     @RabbitListener(queues = "${app.rabbitmq.order-created-queue}")
     public void handleOrderCreated(OrderCreatedEvent event) {
-        log.info("Received OrderCreatedEvent for Order ID: {}. Attempting to reserve stock.", event.getOrderId());
-        
-        // OrderCreatedEvent es clase Lombok → usar getters
+        log.info("📦 Received OrderCreatedEvent for Order ID: {}. Attempting to reserve stock.", event.getOrderId());
+
         productStockService.processOrderCreation(event.getOrderId(), event.getProducts())
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe(
-                v -> log.info("Stock reservation process finished for Order ID: {}", event.getOrderId()),
-                e -> log.error("Error processing stock reservation for Order ID {}: {}", event.getOrderId(), e.getMessage())
+                v -> log.info("✅ Stock reservation process finished for Order ID: {}", event.getOrderId()),
+                e -> log.error("❌ Error processing stock reservation for Order ID {}: {}", event.getOrderId(), e.getMessage())
             );
     }
-    
+
+    // 2️⃣ Evento: se procesa el pago → confirmar reservas
     @RabbitListener(queues = "${app.rabbitmq.payment-processed-queue}")
     public void handlePaymentProcessed(PaymentProcessedEvent event) {
-        log.info("Received PaymentProcessedEvent for Order ID: {}. Confirming stock reservation.", event.getOrderId());
+        log.info("💰 Received PaymentProcessedEvent for Order ID: {}. Confirming stock reservation.", event.getOrderId());
 
-        // PaymentProcessedEvent es clase Lombok → usar getters
         productStockService.confirmStockReservation(event.getOrderId())
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe(
-                v -> log.info("Stock reservation confirmed successfully for Order ID: {}", event.getOrderId()),
-                e -> log.error("Error confirming stock reservation for Order ID {}: {}", event.getOrderId(), e.getMessage())
+                v -> log.info("✅ Stock reservation confirmed successfully for Order ID: {}", event.getOrderId()),
+                e -> log.error("❌ Error confirming stock reservation for Order ID {}: {}", event.getOrderId(), e.getMessage())
             );
     }
 
-    @RabbitListener(queues = "${app.rabbitmq.release-stock-command-queue}")
-    public void handleReleaseStockCommand(ReleaseStockCommand command) {
-        log.warn("Received ReleaseStockCommand for Order ID: {}. Initiating stock release (Saga Rollback). Reason: {}", 
-                  command.getOrderId(), command.getReason());
-        
-        // ReleaseStockCommand es clase Lombok → usar getters
-        productStockService.releaseOrderStock(command.getOrderId(), command.getProducts())
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                v -> log.info("Stock successfully released for Order ID: {}", command.getOrderId()),
-                e -> log.error("Error releasing stock for Order ID {}: {}", command.getOrderId(), e.getMessage())
-            );
-    }
-    
+    // 4️⃣ Comando: reintento manual o idempotente (no doble ejecución)
     @RabbitListener(queues = "${app.rabbitmq.reserve-stock-command-queue}")
     public void handleReserveStockCommand(ReserveStockCommand command) {
-        log.info("Received ReserveStockCommand for Order ID: {}. Processing stock reservation.", command.orderId());
-        
-        // ReserveStockCommand es Record → usar métodos sin "get"
-        productStockService.processOrderCreation(command.orderId(), command.items())
+        log.info("⚙️ Received ReserveStockCommand for Order ID: {}.", command.orderId());
+
+        // Antes de ejecutar, validar si ya existen reservas
+        productStockService.isQuantityAvailable(command.items().get(0).productId(), command.items().get(0).quantity())
+            .flatMap(avail -> {
+                if (!avail) {
+                    log.warn("♻️ Order {} already processed or insufficient stock, skipping duplicate ReserveStockCommand.", command.orderId());
+                    return reactor.core.publisher.Mono.empty();
+                }
+                // En un escenario real podrías reintentar aquí, pero no automático.
+                log.info("ℹ️ ReserveStockCommand received for Order {} — no action taken (handled by OrderCreatedEvent).", command.orderId());
+                return reactor.core.publisher.Mono.empty();
+            })
             .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                v -> log.info("Stock reservation completed for Order ID: {}", command.orderId()),
-                e -> log.error("Error processing stock reservation for Order ID {}: {}", command.orderId(), e.getMessage())
-            );
+            .subscribe();
     }
 }

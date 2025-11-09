@@ -8,8 +8,6 @@ import com.store.inventory_microservice.infrastructure.persistence.entity.StockR
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IStockReservationMapper {
-
     StockReservationEntity toEntity(StockReservation domain);
-    
     StockReservation toDomain(StockReservationEntity entity);
 }

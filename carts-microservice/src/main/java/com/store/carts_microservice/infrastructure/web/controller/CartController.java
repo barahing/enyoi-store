@@ -1,7 +1,10 @@
 package com.store.carts_microservice.infrastructure.web.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import java.util.UUID;
@@ -13,6 +16,7 @@ import com.store.carts_microservice.domain.ports.in.ICartServicePort;
 @RestController
 @RequestMapping("/api/carts")
 @RequiredArgsConstructor
+@Slf4j
 public class CartController {
 
     private final ICartServicePort cartService;
@@ -62,9 +66,14 @@ public class CartController {
         return cartService.deleteCart(cartId);
     }
 
-    @PostMapping("/{cartId}/convert-to-order")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public Mono<Cart> convertToOrder(@PathVariable("cartId") UUID cartId) {
-        return cartService.convertCartToOrder(cartId);
+   @PostMapping("/{cartId}/convert-to-order")
+    public Mono<ResponseEntity<Cart>> convertToOrder(@PathVariable("cartId") UUID cartId) {
+        log.info("🧩 Received convert-to-order request for cartId='{}'", cartId);
+        return cartService.convertCartToOrder(cartId)
+            .map(ResponseEntity::ok)
+            .onErrorResume(e -> {
+                log.error("❌ Error converting cart {}: {}", cartId, e.getMessage());
+                return Mono.just(ResponseEntity.internalServerError().build());
+            });
     }
 }
