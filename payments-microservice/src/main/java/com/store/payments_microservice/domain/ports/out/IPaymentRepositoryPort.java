@@ -7,7 +7,7 @@ import com.store.payments_microservice.domain.model.Payment;
 import reactor.core.publisher.Mono;
 
 public interface IPaymentRepositoryPort {
-    
-    Mono<Payment> save(Payment payment);
+    Mono<Payment> create(Payment payment);
+    Mono<Payment> update(Payment payment);
     Mono<Payment> findByOrderId(UUID orderId);
 }

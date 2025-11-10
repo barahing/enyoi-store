@@ -1,10 +1,11 @@
 package com.store.payments_microservice.infrastructure.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Exchange;
-import org.springframework.amqp.core.ExchangeBuilder;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,31 +15,52 @@ public class RabbitMQConfig {
 
     @Value("${app.rabbitmq.exchange}")
     private String eventsExchangeName;
-    
+
     @Value("${app.rabbitmq.payment-queue}")
     private String paymentQueueName;
-    
-    private static final String PROCESS_PAYMENT_ROUTING_KEY = "payment.process"; 
 
+    // ✅ MessageConverter
     @Bean
-    public Exchange eventsExchange() {
-        return ExchangeBuilder
-                .topicExchange(eventsExchangeName)
-                .durable(true)
-                .build();
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
     }
 
+    // ✅ RabbitTemplate
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        return rabbitTemplate;
+    }
+
+    // ✅ ListenerContainerFactory
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(jsonMessageConverter());
+        return factory;
+    }
+
+    // ✅ Exchange
+    @Bean
+    public TopicExchange eventsExchange() {
+        return new TopicExchange(eventsExchangeName);
+    }
+
+    // ✅ Queue para recibir ProcessPaymentCommand
     @Bean
     public Queue paymentQueue() {
         return new Queue(paymentQueueName, true);
     }
 
+    // ✅ Binding para ProcessPaymentCommand
     @Bean
-    public Binding bindingPaymentQueue() {
+    public Binding paymentQueueBinding() {
         return BindingBuilder
                 .bind(paymentQueue())
                 .to(eventsExchange())
-                 .with(PROCESS_PAYMENT_ROUTING_KEY) 
-                .noargs();
+                .with("payment.process");
     }
 }

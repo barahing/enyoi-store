@@ -14,8 +14,10 @@ import com.store.carts_microservice.domain.ports.out.ICartRepositoryPort;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartEntity;
 import com.store.carts_microservice.infrastructure.persistence.entity.CartItemEntity;
 import com.store.carts_microservice.infrastructure.persistence.mapper.ICartEntityMapper;
+import com.store.carts_microservice.infrastructure.persistence.mapper.ICartItemEntityMapper;
 import com.store.carts_microservice.infrastructure.persistence.repository.ICartR2dbcRepository;
 import com.store.carts_microservice.infrastructure.persistence.repository.ICartItemR2dbcRepository;
+
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +29,7 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
     private final ICartR2dbcRepository cartRepository;
     private final ICartItemR2dbcRepository cartItemRepository;
     private final ICartEntityMapper cartMapper;
+    private final ICartItemEntityMapper cartItemMapper;
 
     @Override
     public Mono<Cart> create(Cart cart) {
@@ -81,20 +84,16 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
 
     @Override
     public Mono<Cart> findByOrderId(UUID orderId) {
-        log.debug("🔍 Searching cart with orderId={}", orderId);
-
         return cartRepository.findByOrderId(orderId)
-            .flatMap(this::mapCartEntityToDomainWithItems)
-            .switchIfEmpty(Mono.defer(() -> {
-                log.warn("⚠️ No cart found for orderId={}", orderId);
-                return Mono.empty();
-            }));
-    }
-
-    @Override
-    public Mono<Void> deleteById(UUID id) {
-        return cartItemRepository.deleteAllByCartId(id)
-            .then(cartRepository.deleteById(id));
+            .flatMap((CartEntity cartEntity) -> {
+                Mono<List<CartItem>> itemsMono = cartItemRepository.findByCartId(cartEntity.getId())
+                    .map(cartItemMapper::toDomain)
+                    .collectList();
+                
+                return itemsMono.map(items -> cartMapper.toDomainWithItems(cartEntity, items));
+            })
+            .doOnNext(cart -> log.debug("Found cart by orderId: {} -> {}", orderId, cart.getCartId()))
+            .doOnError(e -> log.error("Error finding cart by orderId {}: {}", orderId, e.getMessage()));
     }
 
     @Override
@@ -167,5 +166,19 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
                     .collect(Collectors.toList());
                 return cartMapper.toDomainWithItems(cartEntity, cartItems);
             });
+    }
+
+    @Override
+    public Mono<Void> deleteById(UUID cartId) {
+        return cartItemRepository.deleteById(cartId)
+            .then(cartRepository.deleteById(cartId))
+            .doOnSuccess(v -> log.info("Deleted cart with id: {}", cartId))
+            .doOnError(e -> log.error("Error deleting cart {}: {}", cartId, e.getMessage()));
+    }
+
+    @Override
+    public Mono<Cart> findByClientIdAndStatus(UUID clientId, CartStatus status) {
+        return cartRepository.findByClientIdAndStatus(clientId, status.name())
+            .flatMap(this::mapCartEntityToDomainWithItems);
     }
 }

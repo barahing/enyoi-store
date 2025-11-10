@@ -9,6 +9,8 @@ import com.store.common.commands.ReserveStockCommand;
 import com.store.common.events.OrderCancelledEvent;
 import com.store.common.events.OrderConfirmedEvent;
 import com.store.common.events.OrderCreatedEvent;
+import com.store.common.events.OrderDeliveredEvent;
+import com.store.common.events.OrderShippedEvent;
 import com.store.orders_microservice.domain.ports.out.IEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,9 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
     private static final String KEY_PROCESS_PAYMENT = "payment.process"; // Comando a Payment
     private static final String KEY_RESERVE_STOCK = "stock.reserve"; // Comando a Inventory
     private static final String KEY_RELEASE_STOCK = "stock.release"; // Comando de reversión
+
+    private static final String KEY_ORDER_SHIPPED = "order.shipped";
+    private static final String KEY_ORDER_DELIVERED = "order.delivered";
 
     private Mono<Void> sendEvent(String routingKey, Object event) {
         return Mono.fromRunnable(() -> {
@@ -68,5 +73,15 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
     @Override
     public Mono<Void> publishReserveStockCommand(ReserveStockCommand command) {
         return sendEvent(KEY_RESERVE_STOCK, command);
+    }
+
+    @Override
+    public Mono<Void> publishOrderShippedEvent(OrderShippedEvent event) {
+        return sendEvent(KEY_ORDER_SHIPPED, event);
+    }
+
+    @Override
+    public Mono<Void> publishOrderDeliveredEvent(OrderDeliveredEvent event) {
+        return sendEvent(KEY_ORDER_DELIVERED, event);
     }
 }

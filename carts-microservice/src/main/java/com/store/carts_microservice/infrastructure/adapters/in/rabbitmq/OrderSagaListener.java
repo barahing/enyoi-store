@@ -9,9 +9,12 @@ import com.store.common.events.StockReservedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Component
@@ -36,28 +39,32 @@ public class OrderSagaListener {
             );
     }
 
-    /**
-     * 2️⃣ OrderConfirmedEvent → marcar cart como CONVERTED_TO_ORDER y crear nuevo cart vacío.
-     */
     @RabbitListener(queues = "${app.rabbitmq.order-confirmed-queue}")
     public void handleOrderConfirmedEvent(OrderConfirmedEvent event) {
-        log.info("📦 [CARTS] Received OrderConfirmedEvent for orderId={} userId={}", event.getOrderId(), event.getUserId());
-
-        cartServicePort.updateCartStatusByOrderId(event.getOrderId(), CartStatus.CONVERTED_TO_ORDER)
-            .then(cartServicePort.createCartForClient(event.getUserId()))
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                newCart -> log.info("✅ Old cart converted, new ACTIVE cart {} created for user {}", newCart.getCartId(), event.getUserId()),
-                e -> log.error("❌ Error updating/creating cart for user {}: {}", event.getUserId(), e.getMessage())
-            );
+        log.info("📦 [CARTS] Received OrderConfirmedEvent for orderId={} userId={}. No action needed (cart already handled by StockReservedEvent)", 
+                event.getOrderId(), event.getUserId());
+        // Solo log, no acción - el carrito ya fue manejado por StockReservedEvent
     }
 
-    /**
-     * 3️⃣ StockReservedEvent → solo registrar, no eliminar.
-     * (El cart se elimina o cierra al confirmar la orden).
-     */
     @RabbitListener(queues = "${app.rabbitmq.stock-reserved-queue}")
     public void handleStockReservedEvent(StockReservedEvent event) {
-        log.info("📦 [CARTS] Received StockReservedEvent for orderId={}. No action (cart managed by OrderConfirmedEvent)", event.orderId());
+        log.info("📦 [CARTS] Received StockReservedEvent for orderId={}", event.orderId());
+
+        Mono<UUID> orderIdMono = Mono.just(event.orderId());
+        
+        orderIdMono.flatMap(orderId -> 
+            cartServicePort.findByOrderId(orderId)
+                .switchIfEmpty(Mono.error(new IllegalStateException("No cart found for orderId: " + orderId)))
+                .flatMap(cart -> {
+                    UUID clientId = cart.getClientId();
+                    return cartServicePort.updateCartStatusByOrderId(orderId, CartStatus.CONVERTED_TO_ORDER)
+                        .then(cartServicePort.createCartForClient(clientId));
+                })
+        )
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe(
+            newCart -> log.info("✅ Cart converted and new active cart created: {}", newCart.getCartId()),
+            e -> log.error("❌ Error converting cart for orderId {}: {}", event.orderId(), e.getMessage())
+        );
     }
 }

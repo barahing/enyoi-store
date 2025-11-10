@@ -7,6 +7,10 @@ spring:
     port: 5672
     username: guest
     password: guest
+    publisher-returns: true              # <- Necesario para ReturnsCallback
+    publisher-confirm-type: correlated   # <- Necesario para ConfirmCallback
+    template:
+      mandatory: true                    # <- Hace que los mensajes NO enrutables disparen 'return'
 
   application:
     name: user-service
@@ -47,3 +51,11 @@ management:
       show-details: always
       probes:
         enabled: true
+
+logging:
+  level:
+    org.springframework.amqp: DEBUG
+    org.springframework.amqp.rabbit.core.RabbitTemplate: DEBUG
+    org.springframework.amqp.rabbit.connection.CachingConnectionFactory: DEBUG
+    com.store.users_microservice.infrastructure.adapters.out.rabbitmq: DEBUG
+    com.store.users_microservice: DEBUG

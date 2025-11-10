@@ -215,14 +215,52 @@ public Mono<Cart> convertCartToOrder(UUID cartId) {
     public Mono<Void> linkOrderToCart(UUID clientId, UUID orderId) {
         log.info("🟡 Linking order {} to cart of client {}", orderId, clientId);
 
-        return cartRepository.findActiveCartByClientId(clientId)
-            .switchIfEmpty(Mono.error(new IllegalStateException("No active cart found for client: " + clientId)))
+        // CAMBIO: Buscar carrito en estado CONVERTING en lugar de ACTIVE
+        return cartRepository.findByClientIdAndStatus(clientId, CartStatus.CONVERTING)
+            .switchIfEmpty(Mono.error(new IllegalStateException("No CONVERTING cart found for client: " + clientId)))
             .flatMap(cart -> {
                 cart.setOrderId(orderId);
-                cart.setStatus(CartStatus.CONVERTING);
+                // El estado ya es CONVERTING, no necesitamos cambiarlo
                 return cartRepository.update(cart).then();
             })
             .doOnSuccess(v -> log.info("✅ Linked cart to orderId {}", orderId))
             .doOnError(e -> log.error("❌ Failed to link cart to orderId {}: {}", orderId, e.getMessage()));
     }
+
+    @Override
+    public Mono<Void> recreateCartAfterStockReserved(UUID orderId) {
+        log.info("📦 [CARTS] Handling StockReserved for orderId={}", orderId);
+
+        return cartRepository.findByOrderId(orderId)
+            .switchIfEmpty(Mono.error(new IllegalStateException(
+                "No CONVERTING cart found linked to orderId: " + orderId)))
+            .flatMap(cart -> {
+                UUID clientId = cart.getClientId();
+                UUID cartId   = cart.getCartId();
+
+                log.info("🧾 Found cart {} (clientId={}) linked to order {}. Deleting...", cartId, clientId, orderId);
+
+                // 1) Borrar el carrito CONVERTING
+                return cartRepository.deleteById(cartId)
+                    .then(
+                        // 2) Crear el nuevo carrito vacío ACTIVE para ese cliente
+                        createCartForClient(clientId)
+                            .doOnSuccess(newCart -> log.info("🆕 New ACTIVE cart {} created for client {}", 
+                                                            newCart.getCartId(), clientId))
+                            .then()
+                    );
+            })
+            .doOnSuccess(v -> log.info("✅ [CARTS] Recreated cart after stock reserved for orderId={}", orderId))
+            .doOnError(e -> log.error("❌ [CARTS] Failed to recreate cart for orderId {}: {}", orderId, e.getMessage()));
+    }
+    
+    @Override
+    public Mono<Cart> findByOrderId(UUID orderId) {
+        log.info("🔍 Searching cart by orderId: {}", orderId);
+        return cartRepository.findByOrderId(orderId)
+            .switchIfEmpty(Mono.error(new IllegalArgumentException("Cart not found for orderId: " + orderId)))
+            .doOnSuccess(cart -> log.info("✅ Found cart {} for orderId {}", cart.getCartId(), orderId))
+            .doOnError(e -> log.error("❌ Error finding cart for orderId {}: {}", orderId, e.getMessage()));
+    }
+
 }

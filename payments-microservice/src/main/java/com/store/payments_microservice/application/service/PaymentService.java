@@ -27,49 +27,48 @@ public class PaymentService implements IPaymentServicePort {
 
     @Override
     public Mono<Void> processOrderPayment(ProcessPaymentCommand command) {
+        // 🔥 CAMBIO TEMPORAL: Siempre éxito para testing
+        boolean paymentSuccessful = true; // En lugar de random.nextInt(100) < 80
 
-        boolean paymentSuccessful = random.nextInt(100) < 80; 
-        
         UUID orderId = command.orderId();
         String paymentMethod = command.paymentMethod();
-        
+
         Payment payment = Payment.createNew(orderId, command.amount(), paymentMethod);
-        
+
         log.info("Processing payment for Order ID: {} Amount: {}", orderId, command.amount());
 
-        return persistencePort.save(payment)
+        return persistencePort.create(payment)
             .flatMap(savedPayment -> {
                 if (paymentSuccessful) {
-
                     String transactionRef = UUID.randomUUID().toString();
                     Payment processedPayment = savedPayment.markAsProcessed(transactionRef);
-                    
-                    log.info("Payment SUCCESS for Order ID {}. Transaction: {}", orderId, transactionRef);
 
-                    return persistencePort.save(processedPayment)
+                    log.info("✅ Payment SUCCESS for Order ID {}. Transaction: {}", orderId, transactionRef);
+
+                    return persistencePort.update(processedPayment)
                         .then(Mono.defer(() -> {
                             PaymentProcessedEvent successEvent = new PaymentProcessedEvent(
-                                orderId, 
-                                processedPayment.getId(), 
+                                orderId,
+                                processedPayment.getId(),
                                 transactionRef
                             );
                             return eventPublisherPort.publishPaymentProcessedEvent(successEvent);
                         }));
-                        
                 } else {
-
+                    // 🔥 ESTO NO SE EJECUTARÁ TEMPORALMENTE
                     String reason = "Simulated payment failure: Insufficient funds or card decline.";
                     Payment failedPayment = savedPayment.markAsFailed(reason);
-                    
-                    log.warn("Payment FAILED for Order ID {}. Reason: {}", orderId, reason);
-                    
-                    return persistencePort.save(failedPayment)
+
+                    log.warn("❌ Payment FAILED for Order ID {}. Reason: {}", orderId, reason);
+
+                    return persistencePort.update(failedPayment)
                         .then(Mono.defer(() -> {
                             PaymentFailedEvent failureEvent = new PaymentFailedEvent(orderId, reason);
                             return eventPublisherPort.publishPaymentFailedEvent(failureEvent);
                         }));
                 }
             })
-            .then(); 
+            .then();
     }
+
 }

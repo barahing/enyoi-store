@@ -1,6 +1,7 @@
 package com.store.orders_microservice.infrastructure.event.adapter;
 
 import java.util.UUID;
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,7 +15,6 @@ import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
 import com.store.common.events.StockReservationFailedEvent;
 import com.store.common.events.StockReservedEvent;
-import com.store.common.commands.ReleaseStockCommand;
 import com.store.common.commands.ReserveStockCommand;
 import com.store.common.dto.ProductStockDTO;
 import com.store.orders_microservice.domain.exception.OrderNotFoundException;
@@ -46,6 +46,8 @@ public class SagaEventsConsumer {
             order -> {
                 order.handlePaymentApproved(); 
                 
+                log.info("✅ [ORDERS] Order {} status updated to PAYMENT_APPROVED", order.getOrderId());
+                
                 // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
                 if (order.getStatus() == OrderStatus.CONFIRMED) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
@@ -72,7 +74,8 @@ public class SagaEventsConsumer {
                     new com.store.common.events.OrderCancelledEvent(order.getOrderId(), order.getClientId(), event.getReason())
                 );
                 
-                // 2. Publicar comando de liberación de stock (ROLLBACK)
+                // 🔥 COMENTAR TEMPORALMENTE: No liberar stock para permitir reintentos
+                /*
                 ReleaseStockCommand releaseCommand = new ReleaseStockCommand(
                     order.getOrderId(), 
                     "Saga rollback: Payment failed.",
@@ -82,6 +85,11 @@ public class SagaEventsConsumer {
                 Mono<Void> releaseStock = eventPublisherPort.publishReleaseStockCommand(releaseCommand);
                 
                 return cancelNotification.then(releaseStock);
+                */
+                
+                // 🔥 SOLO notificar cancelación, mantener stock reservado
+                log.warn("⚠️ Payment failed for order {}, but keeping stock reserved for potential retry", order.getOrderId());
+                return cancelNotification;
             }
         ).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
@@ -94,6 +102,7 @@ public class SagaEventsConsumer {
             order -> {
                 order.handleStockReserved();
                 
+                // ✅ SOLO actualizar estado, NO publicar ProcessPaymentCommand
                 // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
                 if (order.getStatus() == OrderStatus.CONFIRMED) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
@@ -138,11 +147,11 @@ public class SagaEventsConsumer {
             });
     }
 
-    @RabbitListener(queues = "${app.rabbitmq.cart-converted-queue}")
+   @RabbitListener(queues = "${app.rabbitmq.cart-converted-queue}")
     public void handleCartConverted(CartConvertedEvent event) {
         log.info("🎯 [ORDERS] Received CartConvertedEvent for ClientId: {}", event.clientId());
         
-        // 1️⃣ Crear la nueva orden a partir del carrito convertido
+        // 1️⃣ Crear la nueva orden
         orderRepositoryPort.save(
             OrderFactory.createNew(
                 event.clientId(),
@@ -155,15 +164,14 @@ public class SagaEventsConsumer {
                     .collect(Collectors.toList())
             )
         )
-        .doOnSuccess(savedOrder -> {
+        .flatMap((Order savedOrder) -> {
             log.info("✅ [ORDERS] Order created with ID: {}", savedOrder.getOrderId());
 
-            // 2️⃣ Armar lista de productos para los comandos/eventos siguientes
             List<ProductStockDTO> productList = savedOrder.getItems().stream()
                 .map(item -> new ProductStockDTO(item.productId(), item.quantity()))
                 .collect(Collectors.toList());
 
-            // 3️⃣ Publicar evento OrderCreatedEvent
+            // 2️⃣ Publicar OrderCreatedEvent y ESPERAR a que se complete
             OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent();
             orderCreatedEvent.setOrderId(savedOrder.getOrderId());
             orderCreatedEvent.setUserId(savedOrder.getClientId());
@@ -171,24 +179,20 @@ public class SagaEventsConsumer {
             orderCreatedEvent.setProducts(productList);
 
             log.info("📨 [ORDERS] Publishing OrderCreatedEvent for orderId={}", savedOrder.getOrderId());
-            eventPublisherPort.publishOrderCreatedEvent(orderCreatedEvent)
-                .then(
-                    // 4️⃣ Publicar comando ReserveStockCommand
-                    Mono.defer(() -> {
-                        ReserveStockCommand reserveCommand = new ReserveStockCommand(savedOrder.getOrderId(), productList);
-                        log.info("📦 [ORDERS] Publishing ReserveStockCommand for orderId={}", savedOrder.getOrderId());
-                        return eventPublisherPort.publishReserveStockCommand(reserveCommand);
-                    })
-                )
-                .subscribe(
-                    v -> log.info("✅ [ORDERS] OrderCreated and ReserveStockCommand published for orderId={}", savedOrder.getOrderId()),
-                    e -> log.error("❌ [ORDERS] Error publishing events for orderId {}: {}", savedOrder.getOrderId(), e.getMessage())
-                );
+            
+            return eventPublisherPort.publishOrderCreatedEvent(orderCreatedEvent)
+                // 3️⃣ ESPERAR antes de reservar stock para dar tiempo a Carts
+                .then(Mono.delay(Duration.ofMillis(1000))) // ⚡ 1 segundo de delay
+                .then(Mono.defer(() -> {
+                    // 4️⃣ Solo después del delay, publicar ReserveStockCommand
+                    ReserveStockCommand reserveCommand = new ReserveStockCommand(savedOrder.getOrderId(), productList);
+                    log.info("📦 [ORDERS] Publishing ReserveStockCommand for orderId={}", savedOrder.getOrderId());
+                    return eventPublisherPort.publishReserveStockCommand(reserveCommand);
+                }))
+                .thenReturn(savedOrder);
         })
         .doOnError(error -> log.error("❌ [ORDERS] Failed to create order from CartConvertedEvent: {}", error.getMessage(), error))
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe();
     }
-
-
 }

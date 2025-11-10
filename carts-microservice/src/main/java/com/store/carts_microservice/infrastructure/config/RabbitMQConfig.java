@@ -2,18 +2,30 @@ package com.store.carts_microservice.infrastructure.config;
 
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
+
 import com.store.common.messaging.MessagingConstants;
 
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class RabbitMQConfig {
+
+    private final ConnectionFactory connectionFactory;
 
     // --- EXCHANGES ---
     @Value("${app.rabbitmq.exchange:store.events}")
@@ -29,23 +41,20 @@ public class RabbitMQConfig {
 
     // --- BEANS ---
 
-    // ✅ JSON Converter (único)
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // ✅ RabbitTemplate (para publicar mensajes)
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+    public RabbitTemplate rabbitTemplate() {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(jsonMessageConverter());
         return rabbitTemplate;
     }
 
-    // ✅ ListenerContainerFactory (para consumir mensajes)
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory() {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(jsonMessageConverter());
@@ -95,7 +104,6 @@ public class RabbitMQConfig {
         return new Queue("order.created.queue", true);
     }
 
-
     // --- BINDINGS (user events) ---
     @Bean
     public Binding cartCreationBinding() {
@@ -129,15 +137,17 @@ public class RabbitMQConfig {
                 .to(eventsExchange())
                 .with("order.confirmed");
     }
+
     @Bean
     public Binding bindingStockReservedQueueToExchange(
             @Qualifier("stockReservedQueue") Queue stockReservedQueue,
-            @Qualifier("userExchange") TopicExchange userExchange) {
-        System.out.println("🔧 [CARTS] Binding stock.reserved.queue to exchange store.events with key stock.reserved");
+            @Qualifier("eventsExchange") TopicExchange eventsExchange) {
+        System.out.println("🔧 [CARTS] Binding stock.reserved.queue to exchange "
+                + eventsExchange.getName() + " with key stock.reserved");
         return BindingBuilder
                 .bind(stockReservedQueue)
-                .to(userExchange)
-                .with("stock.reserved"); // 👈 debe coincidir con routing key usada por Inventory
+                .to(eventsExchange)
+                .with("stock.reserved");
     }
 
     @Bean
@@ -147,5 +157,26 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderCreatedQueue)
                 .to(eventsExchange)
                 .with("order.created");
+    }
+
+    @Bean
+    public AmqpAdmin amqpAdmin() {
+        return new RabbitAdmin(connectionFactory);
+    }
+
+    /**
+     * 🟢 Declarar binding de forma segura cuando el contexto ya está listo
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void declareUserBindings() {
+        try {
+            AmqpAdmin admin = amqpAdmin();
+            admin.declareExchange(userExchange());
+            admin.declareQueue(cartCreationQueue());
+            admin.declareBinding(cartCreationBinding());
+            log.info("✅ [CARTS] Binding user.created.queue → user.exchange declarado automáticamente (post-startup)");
+        } catch (Exception e) {
+            log.error("❌ [CARTS] Error declarando binding user.created.queue: {}", e.getMessage());
+        }
     }
 }

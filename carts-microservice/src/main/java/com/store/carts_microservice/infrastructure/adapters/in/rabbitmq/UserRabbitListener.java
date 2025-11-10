@@ -17,7 +17,6 @@ public class UserRabbitListener {
 
     private final ICartServicePort cartServicePort;
 
-    // ✅ Estos valores deben coincidir con los declarados en RabbitMQConfig
     @Value("${app.rabbitmq.user-created-queue:user.created.queue}")
     private String userCreatedQueue;
 

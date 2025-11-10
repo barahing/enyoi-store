@@ -1,23 +1,31 @@
 server:
-  port: 8088 
+  port: 8088
 
 spring:
+  profiles:
+    active: dev
+  
+  application:
+    name: notifications-service
+  
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
-    
-  application:
-    name: notifications-service
-  
-  main: 
+  main:
+    web-application-type: reactive
     allow-bean-definition-overriding: true
 
 app:
   rabbitmq:
-    notification-queue: notification-queue 
-    events-exchange: store.events 
+    queues:
+      order-created: order.created.queue
+      order-confirmed: order.confirmed.queue
+      payment-failed: payment-failed-queue
+      order-shipped: order.shipped.queue
+      order-delivered: order.delivered.queue
+      user-created: user.created.queue
 
   brevo:
     api-key: "${SENDINBLUE_API_KEY}"
@@ -38,11 +46,9 @@ eureka:
     metadata-map:
       instanceId: ${spring.application.name}:${server.port}
 
-
 management:
   endpoints:
     web:
-      base-path: /actuator
       exposure:
         include: health,info
   endpoint:
@@ -50,3 +56,12 @@ management:
       show-details: always
       probes:
         enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.store.notifications_microservice: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.web: INFO
+    org.springframework.amqp.rabbit: DEBUG
+    org.springframework.amqp.rabbit.listener: INFO

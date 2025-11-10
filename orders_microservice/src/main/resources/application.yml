@@ -52,11 +52,12 @@ app:
   rabbitmq:
     exchange: store.events
     orders-saga-queue: orders-saga-queue
-    payment-processed-queue: payment-processed-queue
+    payment-processed-queue: order-payment-processed-queue
     payment-failed-queue: payment-failed-queue
     stock-reserved-queue: stock-reserved-queue
     stock-reservation-failed-queue: stock-reservation-failed-queue 
     cart-converted-queue: cart-converted-queue
+    payment-queue: payment-queue
     order-created-key: order.created
     order-confirmed-key: order.confirmed
     order-cancelled-key: order.cancelled

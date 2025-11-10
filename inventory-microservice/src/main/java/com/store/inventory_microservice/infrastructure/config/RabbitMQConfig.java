@@ -142,4 +142,5 @@ public class RabbitMQConfig {
                 .with("payment.processed") 
                 .noargs();
     }
+
 }

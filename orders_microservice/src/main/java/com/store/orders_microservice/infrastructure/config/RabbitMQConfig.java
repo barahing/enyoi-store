@@ -17,7 +17,6 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.exchange}")
     private String eventsExchangeName;
     
-    // Usar las queues específicas en lugar de una sola
     @Value("${app.rabbitmq.payment-processed-queue}")
     private String paymentProcessedQueue;
 
@@ -30,14 +29,29 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.stock-reservation-failed-queue}")
     private String stockReservationFailedQueue;
 
-    @Value("${app.rabbitmq.cart-converted-queue}")  // 👈 AÑADE ESTO
+    @Value("${app.rabbitmq.cart-converted-queue}")
     private String cartConvertedQueue;
 
+    // ✅ NUEVA: Queue para publicar ProcessPaymentCommand
+    @Value("${app.rabbitmq.payment-queue}")
+    private String paymentQueue;
+
+    @Value("${app.rabbitmq.order-shipped-queue:order.shipped.queue}")
+    private String orderShippedQueue;
+
+    @Value("${app.rabbitmq.order-delivered-queue:order.delivered.queue}")
+    private String orderDeliveredQueue;
+
+    // Routing Keys
     private static final String PAYMENT_PROCESSED_KEY = "payment.processed"; 
     private static final String PAYMENT_FAILED_KEY = "payment.failed"; 
     private static final String STOCK_RESERVED_KEY = "stock.reserved"; 
     private static final String STOCK_RESERVATION_FAILED_KEY = "stock.failed"; 
-    private static final String CART_CONVERTED_KEY = "cart.converted.event";  // 👈 AÑADE ESTO
+    private static final String CART_CONVERTED_KEY = "cart.converted.event";
+    // ✅ NUEVA: Routing key para ProcessPaymentCommand
+    private static final String PROCESS_PAYMENT_KEY = "payment.process";
+    private static final String ORDER_SHIPPED_KEY = "order.shipped";
+    private static final String ORDER_DELIVERED_KEY = "order.delivered";
 
     @Bean
     public Exchange eventsExchange() {
@@ -47,10 +61,9 @@ public class RabbitMQConfig {
                 .build();
     }
 
-    // Crear queues separadas
     @Bean
     public Queue paymentProcessedQueue() {
-        return new Queue(paymentProcessedQueue, true);
+        return new Queue(paymentProcessedQueue, true); 
     }
 
     @Bean
@@ -68,12 +81,28 @@ public class RabbitMQConfig {
         return new Queue(stockReservationFailedQueue, true);
     }
 
-    @Bean  // 👈 AÑADE ESTE BEAN
+    @Bean
     public Queue cartConvertedQueue() {
         return new Queue(cartConvertedQueue, true);
     }
 
-    // Bindings para queues separadas
+    // ✅ NUEVA: Queue para publicar ProcessPaymentCommand
+    @Bean
+    public Queue paymentQueue() {
+        return new Queue(paymentQueue, true);
+    }
+
+    @Bean
+    public Queue orderShippedQueue() {
+        return new Queue(orderShippedQueue, true);
+    }
+
+    @Bean
+    public Queue orderDeliveredQueue() {
+        return new Queue(orderDeliveredQueue, true);
+    }
+
+    // Bindings existentes...
     @Bean
     public Binding bindingPaymentProcessed() {
         return BindingBuilder
@@ -110,7 +139,7 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
-    @Bean  // 👈 AÑADE ESTE BINDING
+    @Bean
     public Binding bindingCartConverted() {
         return BindingBuilder
                 .bind(cartConvertedQueue())
@@ -119,8 +148,36 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
+    // ✅ NUEVO: Binding para publicar ProcessPaymentCommand
+    @Bean
+    public Binding bindingProcessPayment() {
+        return BindingBuilder
+                .bind(paymentQueue())
+                .to(eventsExchange())
+                .with(PROCESS_PAYMENT_KEY)
+                .noargs();
+    }
+
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
-}
+    }
+
+    @Bean
+    public Binding bindingOrderShipped() {
+        return BindingBuilder
+            .bind(orderShippedQueue())
+            .to(eventsExchange())
+            .with(ORDER_SHIPPED_KEY)
+            .noargs();
+    }
+
+    @Bean
+    public Binding bindingOrderDelivered() {
+        return BindingBuilder
+            .bind(orderDeliveredQueue())
+            .to(eventsExchange())
+            .with(ORDER_DELIVERED_KEY)
+            .noargs();
+    }
 }

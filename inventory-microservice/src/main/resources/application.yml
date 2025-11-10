@@ -30,7 +30,7 @@ app:
     exchange: store.events
     order-created-queue: order-created-queue
     release-stock-command-queue: release-stock-command-queue
-    payment-processed-queue: payment-processed-queue 
+    payment-processed-queue: inventory-payment-processed-queue 
     reserve-stock-command-queue: reserve-stock-command-queue  
     stock-reserved-key: stock.reserved
     stock-reservation-failed-key: stock.failed

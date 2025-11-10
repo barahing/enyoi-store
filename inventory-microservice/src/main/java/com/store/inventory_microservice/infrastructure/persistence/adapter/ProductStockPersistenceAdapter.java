@@ -1,5 +1,6 @@
 package com.store.inventory_microservice.infrastructure.persistence.adapter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -53,8 +54,11 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
     @Override
     @Transactional
     public Mono<ProductStock> update(ProductStock stock) {
+        log.info("🔄 [ADAPTER] Updating stock for product {}", stock.getProductId());
+        
+        // VUELVE A LA VERSIÓN ORIGINAL que SÍ funcionaba
         ProductStockEntity entity = stockMapper.toEntity(stock);
-
+        
         return stockRepository.save(entity)
             .map(stockMapper::toDomain)
             .doOnNext(saved -> log.debug("🟢 Updated ProductStock for product {}", saved.getProductId()));

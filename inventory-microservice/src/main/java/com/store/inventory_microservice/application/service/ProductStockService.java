@@ -168,9 +168,6 @@ public class ProductStockService implements IProductStockServicePort {
             .then();
     }
 
-
-
-
     @Override
     public Mono<Void> releaseOrderStock(UUID orderId, List<ProductStockDTO> products) {
         log.warn("Releasing stock for Order ID: {}", orderId);
@@ -189,7 +186,6 @@ public class ProductStockService implements IProductStockServicePort {
             .doOnError(e -> log.error("Error during stock release for Order {}: {}", orderId, e.getMessage()));
     }
 
-
     @Override
     public Mono<Void> confirmStockReservation(UUID orderId) {
         log.info("Confirming stock reservations for Order ID: {}", orderId);
@@ -207,11 +203,49 @@ public class ProductStockService implements IProductStockServicePort {
             .doOnError(e -> log.error("Error confirming stock reservation for Order {}: {}", orderId, e.getMessage()));
     }
 
+    @Override
+    public Mono<Void> confirmStockForOrder(UUID orderId) {
+        log.info("🔄 [INVENTORY] confirmStockForOrder START for order: {}", orderId);
+
+        return persistencePort.findReservationsByOrderId(orderId)
+            .doOnNext(reservation -> log.info("📦 [INVENTORY] Found reservation: order={}, product={}, quantity={}", 
+                    reservation.getOrderId(), reservation.getProductId(), reservation.getQuantity()))
+            .switchIfEmpty(Mono.defer(() -> {
+                log.warn("⚠️ [INVENTORY] No reservations found for order: {}", orderId);
+                return Mono.empty();
+            }))
+            .flatMap(reservation -> {
+                log.info("🔄 [INVENTORY] Processing reservation for product: {}", reservation.getProductId());
+                
+                return persistencePort.findByProductId(reservation.getProductId())
+                    .doOnNext(stock -> log.info("📊 [INVENTORY] Stock before - Product: {}, Current: {}, Reserved: {}", 
+                            reservation.getProductId(), stock.getCurrentStock(), stock.getReservedStock()))
+                    .flatMap(stock -> {
+                        try {
+                            // EJECUCIÓN DIRECTA - sin operadores complejos
+                            stock.confirmReservation(reservation.getQuantity());
+                            log.info("📊 [INVENTORY] Stock after confirmReservation - Current: {}, Reserved: {}", 
+                                    stock.getCurrentStock(), stock.getReservedStock());
+                            
+                            return persistencePort.update(stock)
+                                .doOnNext(updated -> log.info("💾 [INVENTORY] Stock updated in DB - Current: {}, Reserved: {}", 
+                                        updated.getCurrentStock(), updated.getReservedStock()))
+                                .then(persistencePort.deleteReservation(reservation))
+                                .doOnSuccess(v -> log.info("🗑️ [INVENTORY] Reservation deleted for product: {}", reservation.getProductId()));
+                        } catch (Exception e) {
+                            log.error("💥 [INVENTORY] Error in reservation processing: {}", e.getMessage(), e);
+                            return Mono.error(e);
+                        }
+                    });
+            })
+            .then()
+            .doOnSuccess(v -> log.info("✅ [INVENTORY] confirmStockForOrder COMPLETED for order: {}", orderId))
+            .doOnError(e -> log.error("❌ [INVENTORY] confirmStockForOrder FAILED for order {}: {}", orderId, e.getMessage(), e));
+    }
 
     @Override
     public Flux<ProductStock> getAllStocks() {
         return persistencePort.findAllStocks();
-        
     }
     
     @Override

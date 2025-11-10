@@ -42,17 +42,21 @@ public class Order {
     }
 
     public void handlePaymentApproved() {
-    this.status = OrderStatus.PAYMENT_APPROVED;
-    if (this.status.equals(OrderStatus.STOCK_RESERVED)) {
-        this.status = OrderStatus.CONFIRMED;
+        if (this.status == OrderStatus.STOCK_RESERVED) {
+            this.status = OrderStatus.CONFIRMED;
+        } else {
+            this.status = OrderStatus.PAYMENT_APPROVED;
+        }
+        markUpdated();
     }
-}
     
     public void handleStockReserved() {
-        this.status = OrderStatus.STOCK_RESERVED;
-        if (this.status.equals(OrderStatus.PAYMENT_APPROVED)) {
+        if (this.status == OrderStatus.PAYMENT_APPROVED) {
             this.status = OrderStatus.CONFIRMED;
+        } else {
+            this.status = OrderStatus.STOCK_RESERVED;
         }
+        markUpdated();
     }
 
     public void handleStockFailed(String reason) {

@@ -67,6 +67,6 @@ management:
 
 logging:
   level:
-    root: INFO
-    com.store: DEBUG
+    org.springframework.amqp.rabbit.listener: DEBUG
+    org.springframework.amqp.rabbit.core: DEBUG
 

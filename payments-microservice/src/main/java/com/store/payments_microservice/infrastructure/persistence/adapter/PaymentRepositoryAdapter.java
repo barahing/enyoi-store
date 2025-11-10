@@ -18,13 +18,24 @@ public class PaymentRepositoryAdapter implements IPaymentRepositoryPort {
     private final IPaymentEntityMapper mapper; 
 
     @Override
-    public Mono<Payment> save(Payment payment) {
+    public Mono<Payment> create(Payment payment) {
         return Mono.just(payment)
-                .map(mapper::toEntity)
-                .flatMap(r2dbcRepository::save)
-                .map(mapper::toDomain);
+            .map(mapper::toEntity)
+            .flatMap(entity -> {
+                entity.setId(null); // fuerza INSERT
+                return r2dbcRepository.save(entity);
+            })
+            .map(mapper::toDomain);
     }
-    
+
+    @Override
+    public Mono<Payment> update(Payment payment) {
+        return Mono.just(payment)
+            .map(mapper::toEntity)
+            .flatMap(r2dbcRepository::save) // UPDATE porque tiene id
+            .map(mapper::toDomain);
+    }
+
     @Override
     public Mono<Payment> findByOrderId(UUID orderId) {
         return r2dbcRepository.findByOrderId(orderId)

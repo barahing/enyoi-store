@@ -32,7 +32,7 @@ public class ProductStockController {
     private final IProductStockMapperDto stockMapper;
 
     @GetMapping("/{productId}")
-    public Mono<ProductStockResponseDto> getStockByProductId(@PathVariable UUID productId) {
+    public Mono<ProductStockResponseDto> getStockByProductId(@PathVariable("productId") UUID productId) {
         return stockServicePort.getStockByProductId(productId)
                 .map(stockMapper::toDto);
     }
@@ -52,7 +52,7 @@ public class ProductStockController {
     
     @PutMapping("/{productId}")
     public Mono<ProductStockResponseDto> updateInitialStock(
-        @PathVariable UUID productId,
+        @PathVariable("productId") UUID productId,
         @RequestBody @Validated InitialStockRequestDto requestDto) {
         
         if (!productId.equals(requestDto.getProductId())) {
@@ -65,8 +65,8 @@ public class ProductStockController {
 
     @GetMapping("/{productId}/available/{quantity}")
     public Mono<Boolean> isQuantityAvailable(
-        @PathVariable UUID productId, 
-        @PathVariable int quantity) {
+        @PathVariable("productId") UUID productId, 
+        @PathVariable("quantity") int quantity) {
         
         return stockServicePort.getStockByProductId(productId)
             .map(stock -> stock.getCurrentStock() >= quantity)
