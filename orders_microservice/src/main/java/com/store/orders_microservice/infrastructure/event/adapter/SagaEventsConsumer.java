@@ -44,20 +44,39 @@ public class SagaEventsConsumer {
     public void handlePaymentProcessed(PaymentProcessedEvent event) {
         this.processSagaEvent(event.getOrderId(), "PaymentProcessedEvent", 
             order -> {
-                order.handlePaymentApproved(); 
-                
+
+                // 🚦 Validar estados en los que se permite pago
+                if (order.getStatus() != OrderStatus.STOCK_RESERVED && order.getStatus() != OrderStatus.CONFIRMED) {
+                    log.warn("🚫 [ORDERS] Ignoring PaymentProcessedEvent for order {} (invalid status: {})",
+                            order.getOrderId(), order.getStatus());
+
+                    // Opcional: publicar un evento de rechazo de pago
+                    return eventPublisherPort.publishOrderCancelledEvent(
+                        new com.store.common.events.OrderCancelledEvent(
+                            order.getOrderId(),
+                            order.getClientId(),
+                            "Payment received in invalid state: " + order.getStatus()
+                        )
+                    );
+                }
+
+                // ✅ Transición válida: aplicar el cambio
+                order.handlePaymentApproved();
                 log.info("✅ [ORDERS] Order {} status updated to PAYMENT_APPROVED", order.getOrderId());
-                
-                // Si la orden está CONFIRMED (ambos han llegado), publicamos el evento final.
+
+                // Si ahora está CONFIRMED (ambos eventos llegaron)
                 if (order.getStatus() == OrderStatus.CONFIRMED) {
                     return eventPublisherPort.publishOrderConfirmedEvent(
                         new com.store.common.events.OrderConfirmedEvent(order.getOrderId(), order.getClientId())
                     );
                 }
+
                 return Mono.empty();
             }
         ).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
+
+
 
     @RabbitListener(queues = "${app.rabbitmq.payment-failed-queue}")
     public void handlePaymentFailure(PaymentFailedEvent event) {

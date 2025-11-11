@@ -25,7 +25,7 @@ app:
       payment-failed: payment-failed-queue
       order-shipped: order.shipped.queue
       order-delivered: order.delivered.queue
-      user-created: user.created.queue
+      user-created: user.created.queue.inventory
 
   brevo:
     api-key: "${SENDINBLUE_API_KEY}"

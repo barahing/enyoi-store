@@ -92,7 +92,7 @@ public class OrderEventsConsumer {
     }
 
     // 🎯 6️⃣ User Created
-    @RabbitListener(id = "userCreatedListener", queues = "user.created.queue")
+        @RabbitListener(id = "userCreatedListener", queues = "user.created.queue.notifications")
     public void handleUserCreated(UserCreatedEvent event) {
         log.info("📩 [RECEIVED] UserCreatedEvent | userId={} | email={} | name={} {} | role={}",
                 event.userId(), event.email(), event.firstName(), event.lastName(), event.role());

@@ -35,10 +35,15 @@ public class CartService implements ICartServicePort {
     @Override
     public Mono<Cart> createCartForClient(UUID clientId) {
         return cartRepository.findActiveCartByClientId(clientId)
-                .switchIfEmpty(
+            .switchIfEmpty(
+                Mono.defer(() ->
                     Mono.fromCallable(() -> CartFactory.createNewCart(clientId))
                         .flatMap(cartRepository::create)
-                );
+                )
+            )
+            .doOnSuccess(cart ->
+                log.info("🧾 Ensured cart {} for client {}", cart.getCartId(), clientId)
+            );
     }
     
     @Override
@@ -92,7 +97,7 @@ public class CartService implements ICartServicePort {
     }
 
     @Override
-public Mono<Cart> convertCartToOrder(UUID cartId) {
+    public Mono<Cart> convertCartToOrder(UUID cartId) {
     log.info("🔵 [1] Starting convertCartToOrder for cartId: {}", cartId);
     
     return cartRepository.findById(cartId)
@@ -215,17 +220,25 @@ public Mono<Cart> convertCartToOrder(UUID cartId) {
     public Mono<Void> linkOrderToCart(UUID clientId, UUID orderId) {
         log.info("🟡 Linking order {} to cart of client {}", orderId, clientId);
 
-        // CAMBIO: Buscar carrito en estado CONVERTING en lugar de ACTIVE
         return cartRepository.findByClientIdAndStatus(clientId, CartStatus.CONVERTING)
-            .switchIfEmpty(Mono.error(new IllegalStateException("No CONVERTING cart found for client: " + clientId)))
+            .switchIfEmpty(Mono.defer(() -> {
+                log.warn("⚠️ No CONVERTING cart found yet for client {} — retrying", clientId);
+                return Mono.error(new IllegalStateException("Cart not ready"));
+            }))
+            // 🔁 Reintenta hasta 3 veces con 1 segundo entre cada intento
+            .retryWhen(reactor.util.retry.Retry.fixedDelay(3, java.time.Duration.ofSeconds(1))
+                .filter(e -> e instanceof IllegalStateException)
+                .onRetryExhaustedThrow((spec, signal) ->
+                    new RuntimeException("❌ Cart not ready for linking after retries", signal.failure()))
+            )
             .flatMap(cart -> {
                 cart.setOrderId(orderId);
-                // El estado ya es CONVERTING, no necesitamos cambiarlo
-                return cartRepository.update(cart).then();
+                return cartRepository.update(cart).then(); // ✅ mantiene Mono<Void>
             })
             .doOnSuccess(v -> log.info("✅ Linked cart to orderId {}", orderId))
             .doOnError(e -> log.error("❌ Failed to link cart to orderId {}: {}", orderId, e.getMessage()));
     }
+
 
     @Override
     public Mono<Void> recreateCartAfterStockReserved(UUID orderId) {
@@ -234,25 +247,32 @@ public Mono<Cart> convertCartToOrder(UUID cartId) {
         return cartRepository.findByOrderId(orderId)
             .switchIfEmpty(Mono.error(new IllegalStateException(
                 "No CONVERTING cart found linked to orderId: " + orderId)))
+            // 🔁 reintenta 3 veces con 1s de delay si el cart aún no está vinculado
+            .retryWhen(reactor.util.retry.Retry.fixedDelay(3, java.time.Duration.ofSeconds(1))
+                .filter(e -> e instanceof IllegalStateException)
+                .onRetryExhaustedThrow((spec, signal) ->
+                    new RuntimeException("❌ Cart not ready for recreation after retries", signal.failure()))
+            )
             .flatMap(cart -> {
                 UUID clientId = cart.getClientId();
                 UUID cartId   = cart.getCartId();
 
                 log.info("🧾 Found cart {} (clientId={}) linked to order {}. Deleting...", cartId, clientId, orderId);
 
-                // 1) Borrar el carrito CONVERTING
+                // 1️⃣ Borrar carrito CONVERTING
                 return cartRepository.deleteById(cartId)
                     .then(
-                        // 2) Crear el nuevo carrito vacío ACTIVE para ese cliente
+                        // 2️⃣ Crear nuevo carrito vacío ACTIVE
                         createCartForClient(clientId)
-                            .doOnSuccess(newCart -> log.info("🆕 New ACTIVE cart {} created for client {}", 
-                                                            newCart.getCartId(), clientId))
+                            .doOnSuccess(newCart ->
+                                log.info("🆕 New ACTIVE cart {} created for client {}", newCart.getCartId(), clientId))
                             .then()
                     );
             })
             .doOnSuccess(v -> log.info("✅ [CARTS] Recreated cart after stock reserved for orderId={}", orderId))
             .doOnError(e -> log.error("❌ [CARTS] Failed to recreate cart for orderId {}: {}", orderId, e.getMessage()));
     }
+
     
     @Override
     public Mono<Cart> findByOrderId(UUID orderId) {

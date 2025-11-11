@@ -7,10 +7,10 @@ spring:
     port: 5672
     username: guest
     password: guest
-    publisher-returns: true              # <- Necesario para ReturnsCallback
-    publisher-confirm-type: correlated   # <- Necesario para ConfirmCallback
+    publisher-returns: true              
+    publisher-confirm-type: correlated   
     template:
-      mandatory: true                    # <- Hace que los mensajes NO enrutables disparen 'return'
+      mandatory: true                    
 
   application:
     name: user-service

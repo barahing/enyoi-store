@@ -167,16 +167,25 @@ public class OrderService implements IOrderServicePort {
     @Override
     public Mono<Order> cancelOrder(UUID orderId) {
         return getOrderById(orderId)
-            .doOnNext(Order::cancel)
             .flatMap(order -> {
-                if (order.getStatus() == OrderStatus.CANCELLED) {
-                    return eventPublisher.publishOrderCancelledEvent(
-                        new OrderCancelledEvent(order.getOrderId(), order.getClientId(), "CLIENT_CANCELLED")
-                    ).thenReturn(order);
+                try {
+                    order.cancel(); // ahora dentro del flujo reactivo
+                    return orderRepository.save(order)
+                        .flatMap(savedOrder -> eventPublisher.publishOrderCancelledEvent(
+                            new OrderCancelledEvent(
+                                savedOrder.getOrderId(),
+                                savedOrder.getClientId(),
+                                savedOrder.getCancellationReason() != null
+                                    ? savedOrder.getCancellationReason()
+                                    : "CLIENT_CANCELLED"
+                            )
+                        ).thenReturn(savedOrder));
+                } catch (Exception e) {
+                    return Mono.error(e); // manejable dentro del flujo Reactor
                 }
-                return Mono.just(order);
             })
-            .flatMap(orderRepository::save);
+            .doOnSuccess(order -> log.info("🚨 Order {} cancelled successfully", order.getOrderId()))
+            .doOnError(e -> log.error("❌ Error cancelling order {}: {}", orderId, e.getMessage()));
     }
 
     @Override

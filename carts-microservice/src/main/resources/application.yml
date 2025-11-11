@@ -7,10 +7,19 @@ spring:
     port: 5672
     username: guest
     password: guest
+    listener:
+      simple:
+        auto-startup: true
+        missing-queues-fatal: false
+        retry:
+          enabled: true
+          initial-interval: 2000ms
+          max-attempts: 5
+    publisher-confirm-type: correlated
     publisher-returns: true
     template:
       mandatory: true
-
+    
   application:
     name: carts-service
   
@@ -31,7 +40,7 @@ spring:
 app:
   rabbitmq:
     exchange: store.events
-    user-created-queue: user.created.queue
+    user-created-queue: user.created.queue.carts
     user-deactivated-queue: user.deactivated.queue
     user-activated-queue: user.activated.queue
     order-confirmed-queue: order.confirmed.queue

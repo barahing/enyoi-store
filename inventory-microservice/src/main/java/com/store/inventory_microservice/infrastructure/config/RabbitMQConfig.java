@@ -143,4 +143,44 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
+    @Value("${app.rabbitmq.order-cancelled-queue:order-cancelled-queue}")
+    private String orderCancelledQueueName;
+
+    @Bean
+    public Queue orderCancelledQueue() {
+        System.out.println("🔧 [INVENTORY] Creating queue: " + orderCancelledQueueName);
+        return new Queue(orderCancelledQueueName, true);
+    }
+
+    @Bean
+    public Binding bindingOrderCancelledQueueToExchange() {
+        System.out.println("🔧 [INVENTORY] Binding order-cancelled-queue to exchange");
+        return BindingBuilder
+                .bind(orderCancelledQueue())
+                .to(eventsExchange())
+                .with("order.cancelled")
+                .noargs();
+    }
+
+    @Value("${app.rabbitmq.stock-received-queue:stock-received-queue}")
+private String stockReceivedQueueName;
+
+    @Bean
+    public Queue stockReceivedQueue() {
+        System.out.println("🔧 [INVENTORY] Creating queue: " + stockReceivedQueueName);
+        return new Queue(stockReceivedQueueName, true);
+    }
+
+    // Binding para StockReceivedEvent
+    @Bean
+    public Binding bindingStockReceivedQueueToExchange() {
+        System.out.println("🔧 [INVENTORY] Binding stock-received-queue to exchange with key 'stock.received'");
+        return BindingBuilder
+                .bind(stockReceivedQueue())
+                .to(eventsExchange())
+                .with("stock.received") 
+                .noargs();
+    }
+
+
 }

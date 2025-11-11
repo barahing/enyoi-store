@@ -14,5 +14,15 @@ CREATE TABLE IF NOT EXISTS stock_reservations (
     UNIQUE(order_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS stock_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL,
+    action VARCHAR(30) NOT NULL,
+    quantity INT NOT NULL,
+    reference VARCHAR(100),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 CREATE INDEX IF NOT EXISTS idx_stock_reservations_order_id ON stock_reservations(order_id);
 CREATE INDEX IF NOT EXISTS idx_stock_reservations_product_id ON stock_reservations(product_id);

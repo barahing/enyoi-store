@@ -132,4 +132,23 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
         return reservationRepository.delete(entity)
             .doOnSuccess(v -> log.debug("🗑️ Deleted StockReservation for product {}", reservation.getProductId()));
     }
+
+    @Override
+    @Transactional
+    public Mono<ProductStock> increaseStock(UUID productId, Integer quantity) {
+        log.info("📈 [ADAPTER] Increasing stock for product {} by {} units", productId, quantity);
+        
+        return stockRepository.findById(productId)
+            .switchIfEmpty(Mono.error(new IllegalArgumentException("Product stock not found for product: " + productId)))
+            .flatMap(entity -> {
+                // Aumentar el stock actual
+                int newStock = entity.getCurrentStock() + quantity;
+                entity.setCurrentStock(newStock);
+                entity.setUpdatedAt(LocalDateTime.now());
+                
+                return stockRepository.save(entity);
+            })
+            .map(stockMapper::toDomain)
+            .doOnNext(updated -> log.debug("✅ Increased stock for product {} to {}", productId, updated.getCurrentStock()));
+    }
 }

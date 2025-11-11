@@ -50,16 +50,22 @@ public class OrderSagaListener {
     public void handleStockReservedEvent(StockReservedEvent event) {
         log.info("📦 [CARTS] Received StockReservedEvent for orderId={}", event.orderId());
 
-        Mono<UUID> orderIdMono = Mono.just(event.orderId());
-        
-        orderIdMono.flatMap(orderId -> 
-            cartServicePort.findByOrderId(orderId)
-                .switchIfEmpty(Mono.error(new IllegalStateException("No cart found for orderId: " + orderId)))
+        Mono.defer(() ->
+            cartServicePort.findByOrderId(event.orderId())
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("⚠️ No cart found yet for orderId {} — will retry", event.orderId());
+                    return Mono.error(new IllegalStateException("Cart not yet linked to order"));
+                }))
                 .flatMap(cart -> {
                     UUID clientId = cart.getClientId();
-                    return cartServicePort.updateCartStatusByOrderId(orderId, CartStatus.CONVERTED_TO_ORDER)
+                    return cartServicePort.updateCartStatusByOrderId(event.orderId(), CartStatus.CONVERTED_TO_ORDER)
                         .then(cartServicePort.createCartForClient(clientId));
                 })
+        )
+        .retryWhen(reactor.util.retry.Retry.fixedDelay(5, java.time.Duration.ofSeconds(1))
+            .filter(e -> e instanceof IllegalStateException)
+            .onRetryExhaustedThrow((spec, signal) ->
+                new RuntimeException("❌ Cart not linked after retries for orderId " + event.orderId(), signal.failure()))
         )
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe(
@@ -67,4 +73,5 @@ public class OrderSagaListener {
             e -> log.error("❌ Error converting cart for orderId {}: {}", event.orderId(), e.getMessage())
         );
     }
+
 }

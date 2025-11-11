@@ -33,8 +33,8 @@ public class RabbitMQConfig {
     @Bean public Queue orderConfirmedQueue() { return new Queue(MessagingConstants.ORDER_CONFIRMED_QUEUE, true); }
     @Bean public Queue paymentFailedQueue() { return new Queue(MessagingConstants.PAYMENT_FAILED_QUEUE, true); }
     @Bean public Queue shippingSentQueue() { return new Queue(MessagingConstants.SHIPPING_SENT_QUEUE, true); }
-    @Bean public Queue userCreatedQueue() { return new Queue(MessagingConstants.USER_CREATED_QUEUE, true); }
-
+    @Bean public Queue userCreatedQueue() { return new Queue("user.created.queue.notifications", true);
+}
     // === 🧩 Bindings ===
     @Bean
     public Binding bindOrderCreated() {

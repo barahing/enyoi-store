@@ -34,6 +34,8 @@ app:
     reserve-stock-command-queue: reserve-stock-command-queue  
     stock-reserved-key: stock.reserved
     stock-reservation-failed-key: stock.failed
+    order-cancelled-queue: order-cancelled-queue
+    stock-received-queue: stock-received-queue
 
   product-service:
     url: http://localhost:8082

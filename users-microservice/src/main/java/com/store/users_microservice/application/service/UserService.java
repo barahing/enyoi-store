@@ -15,11 +15,13 @@ import com.store.users_microservice.domain.ports.in.IUserServicePort;
 import com.store.users_microservice.domain.ports.out.IUserRepositoryPort;
 import com.store.users_microservice.domain.ports.out.IUserEventPublisherPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService implements IUserServicePort {
 
     private final IUserRepositoryPort userRepository; 
@@ -28,30 +30,36 @@ public class UserService implements IUserServicePort {
 
     @Override
     public Mono<User> createUser(User user) {
-        String hashedPassword = passwordEncoder.encode(user.passwordHash());
-        
-        User newUserWithHash = new User(
+        log.info("🧩 [USER SERVICE] Creating user {}", user.email());
+
+        User newUser = new User(
             null,
             user.firstName(),
             user.lastName(),
             user.email(),
-            hashedPassword,
-            user.role() 
+            passwordEncoder.encode(user.passwordHash()),
+            user.role()
         );
-        
-        return userRepository.save(newUserWithHash)
+
+        return userRepository.save(newUser)
             .flatMap(savedUser -> {
-                UserCreatedEvent event = new UserCreatedEvent(
+                var event = new UserCreatedEvent(
                     savedUser.id(),
                     savedUser.email(),
                     savedUser.firstName(),
                     savedUser.lastName(),
-                    savedUser.role().name() 
+                    savedUser.role().name()
                 );
-                
-                return userEventPublisherPort.publishUserCreated(event)
-                    .thenReturn(savedUser); 
-            });
+
+                userEventPublisherPort.publishUserCreated(event)
+                    .doOnSubscribe(sub -> log.info("📢 [USERS] Publishing UserCreatedEvent for {}", savedUser.email()))
+                    .subscribe();
+
+                return Mono.just(savedUser);
+            })
+            .cache()
+            .doOnSuccess(u -> log.info("✅ [USERS] User {} persisted successfully", u.email()))
+            .doOnError(e -> log.error("❌ [USERS] Failed to create user {}: {}", user.email(), e.getMessage()));
     }
 
     @Override
@@ -98,7 +106,6 @@ public class UserService implements IUserServicePort {
         return userRepository.findById(userId)
             .switchIfEmpty(Mono.error(new UserNotFoundException(userId)))
             .flatMap(user -> {
-                // Crear nueva instancia con rol INACTIVE
                 User deactivatedUser = new User(
                     user.id(),
                     user.firstName(),
@@ -109,8 +116,8 @@ public class UserService implements IUserServicePort {
                 );
                 
                 return userRepository.update(userId, deactivatedUser)
-                    .then(userEventPublisherPort.publishUserDeactivated(  // ← CORREGIDO: usar userEventPublisherPort
-                        new UserDeactivatedEvent(userId)                  // ← Pasar el evento completo
+                    .then(userEventPublisherPort.publishUserDeactivated(  
+                        new UserDeactivatedEvent(userId)                  
                     ));
             });
     }
@@ -120,7 +127,6 @@ public class UserService implements IUserServicePort {
         return userRepository.findById(userId)
             .switchIfEmpty(Mono.error(new UserNotFoundException(userId)))
             .flatMap(user -> {
-                // Crear nueva instancia con rol CLIENT
                 User activatedUser = new User(
                     user.id(),
                     user.firstName(),
@@ -131,22 +137,19 @@ public class UserService implements IUserServicePort {
                 );
                 
                 return userRepository.update(userId, activatedUser)
-                    .then(userEventPublisherPort.publishUserActivated(     // ← CORREGIDO: usar userEventPublisherPort
-                        new UserActivatedEvent(userId)                     // ← Pasar el evento completo
+                    .then(userEventPublisherPort.publishUserActivated(     
+                        new UserActivatedEvent(userId)                     
                     ));
             });
     }
 
-    // Estos métodos NO pueden implementarse sin Order Service
     @Override
     public Mono<Boolean> userCanBeDeleted(UUID userId) {
-        // Por ahora, siempre permitir eliminación
         return Mono.just(true);
     }
 
     @Override
     public Mono<Boolean> userHasPendingOrders(UUID userId) {
-        // Por ahora, asumir que no tiene órdenes pendientes
         return Mono.just(false);
 }
 }
