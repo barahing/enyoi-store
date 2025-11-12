@@ -2,7 +2,6 @@ package com.store.products_microservice.infrastructure.web.controller;
 
 import java.util.Map;
 import java.util.UUID;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

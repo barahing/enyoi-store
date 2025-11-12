@@ -59,3 +59,9 @@ logging:
     org.springframework.amqp.rabbit.connection.CachingConnectionFactory: DEBUG
     com.store.users_microservice.infrastructure.adapters.out.rabbitmq: DEBUG
     com.store.users_microservice: DEBUG
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

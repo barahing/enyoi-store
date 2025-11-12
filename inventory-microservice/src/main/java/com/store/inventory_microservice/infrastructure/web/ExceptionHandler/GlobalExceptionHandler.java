@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleProductAlreadyExistsException(ProductAlreadyExistsException ex) {
         log.warn("Conflict error: {}", ex.getMessage());
         return ResponseEntity
-            .status(HttpStatus.CONFLICT) // 409
+            .status(HttpStatus.CONFLICT) 
             .body(ex.getMessage());
     }
     
@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleProductCatalogMismatchException(ProductCatalogMismatchException ex) {
         log.warn("Bad Request error (Catalog Mismatch): {}", ex.getMessage());
         return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST) // 400
+            .status(HttpStatus.BAD_REQUEST) 
             .body(ex.getMessage());
     }
 
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleStockNotFoundException(StockNotFoundException ex) {
         log.warn("Not Found error: {}", ex.getMessage());
         return ResponseEntity
-            .status(HttpStatus.NOT_FOUND) // 404
+            .status(HttpStatus.NOT_FOUND) 
             .body(ex.getMessage());
     }
 
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
         log.error("Internal Server Error: {}", ex.getMessage(), ex);
         return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
+            .status(HttpStatus.INTERNAL_SERVER_ERROR) 
             .body("An unexpected error occurred: " + ex.getMessage());
     }
 }

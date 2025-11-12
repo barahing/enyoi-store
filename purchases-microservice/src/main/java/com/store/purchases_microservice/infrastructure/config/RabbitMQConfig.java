@@ -24,20 +24,17 @@ public class RabbitMQConfig {
 
     private static final String LOW_STOCK_ALERT_ROUTING_KEY = "stock.low";
 
-    // 🧩 --- Exchange principal ---
     @Bean
     public TopicExchange eventsExchange() {
         return ExchangeBuilder.topicExchange(eventsExchangeName).durable(true).build();
     }
 
-    // 📦 --- Queue para el servicio de compras ---
     @Bean
     public Queue purchasesQueue() {
         log.info("📦 [PURCHASES] Declaring queue: {}", purchasesQueueName);
         return QueueBuilder.durable(purchasesQueueName).build();
     }
 
-    // 🔗 --- Binding entre cola y exchange ---
     @Bean
     public Binding bindingPurchasesQueue(Queue purchasesQueue, TopicExchange eventsExchange) {
         log.info("🔗 [PURCHASES] Binding '{}' with key '{}'", purchasesQueue.getName(), LOW_STOCK_ALERT_ROUTING_KEY);
@@ -47,19 +44,16 @@ public class RabbitMQConfig {
                 .with(LOW_STOCK_ALERT_ROUTING_KEY);
     }
 
-    // 🧠 --- Conversor JSON para eventos ---
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // 🐇 --- Template de envío de mensajes ---
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter());
         template.setExchange(eventsExchangeName);
-        // Activa confirmaciones para depurar fácilmente
         template.setMandatory(true);
         template.setConfirmCallback((correlationData, ack, cause) -> {
             if (ack) {
@@ -71,7 +65,6 @@ public class RabbitMQConfig {
         return template;
     }
 
-    // 🧏 --- Factory para listeners ---
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             ConnectionFactory connectionFactory) {
@@ -81,7 +74,6 @@ public class RabbitMQConfig {
         return factory;
     }
 
-    // 🧩 --- Admin opcional (crea colas automáticamente) ---
     @Bean
     public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
         return new RabbitAdmin(connectionFactory);

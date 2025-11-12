@@ -24,31 +24,15 @@ ext {
 }
 
 dependencies {
-    implementation 'com.store:store-common:2.1.0'
-
-    // 🔹 Spring WebFlux (no MVC)
+    implementation 'com.store:store-common:3.1.3'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
-
-    // 🔹 RabbitMQ for messaging
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
-
-    // 🔹 Eureka client for service discovery
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-
-    // 🔹 Reactor Core for reactive pipelines
     implementation 'io.projectreactor:reactor-core'
-
-    // 🔹 JSON handling
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
-
-    // 🔹 Logging
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
-    // 🔹 Lombok (only for development)
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
-
-    // ✅ Tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
 }

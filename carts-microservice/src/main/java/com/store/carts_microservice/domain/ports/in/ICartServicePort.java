@@ -4,7 +4,6 @@ import java.util.UUID;
 import com.store.carts_microservice.domain.model.Cart;
 import com.store.carts_microservice.domain.model.CartItem;
 import com.store.carts_microservice.domain.model.CartStatus;
-import com.store.carts_microservice.infrastructure.persistence.entity.CartEntity;
 
 import reactor.core.publisher.Mono;
 

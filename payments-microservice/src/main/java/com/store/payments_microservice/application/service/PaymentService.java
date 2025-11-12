@@ -1,14 +1,13 @@
 package com.store.payments_microservice.application.service;
 
 import java.util.UUID;
-import java.util.Random;
-
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
-
 import com.store.payments_microservice.domain.model.Payment;
 import com.store.payments_microservice.domain.ports.in.IPaymentServicePort;
 import com.store.payments_microservice.domain.ports.out.IEventPublisherPort;
 import com.store.payments_microservice.domain.ports.out.IPaymentRepositoryPort;
+import com.store.payments_microservice.infrastructure.client.OrdersClient;
 import com.store.common.commands.ProcessPaymentCommand; 
 import com.store.common.events.PaymentFailedEvent;
 import com.store.common.events.PaymentProcessedEvent;
@@ -23,52 +22,63 @@ public class PaymentService implements IPaymentServicePort {
 
     private final IPaymentRepositoryPort persistencePort;
     private final IEventPublisherPort eventPublisherPort;
-    private final Random random = new Random();
+    private final OrdersClient ordersClient;
 
     @Override
     public Mono<Void> processOrderPayment(ProcessPaymentCommand command) {
-        // 🔥 CAMBIO TEMPORAL: Siempre éxito para testing
-        boolean paymentSuccessful = true; // En lugar de random.nextInt(100) < 80
-
         UUID orderId = command.orderId();
-        String paymentMethod = command.paymentMethod();
+        BigDecimal requestedAmount = command.amount();
 
-        Payment payment = Payment.createNew(orderId, command.amount(), paymentMethod);
+        log.info("💳 [PAYMENTS] Processing payment for Order ID: {} | Amount: {}", orderId, requestedAmount);
 
-        log.info("Processing payment for Order ID: {} Amount: {}", orderId, command.amount());
-
-        return persistencePort.create(payment)
-            .flatMap(savedPayment -> {
-                if (paymentSuccessful) {
-                    String transactionRef = UUID.randomUUID().toString();
-                    Payment processedPayment = savedPayment.markAsProcessed(transactionRef);
-
-                    log.info("✅ Payment SUCCESS for Order ID {}. Transaction: {}", orderId, transactionRef);
-
-                    return persistencePort.update(processedPayment)
-                        .then(Mono.defer(() -> {
-                            PaymentProcessedEvent successEvent = new PaymentProcessedEvent(
-                                orderId,
-                                processedPayment.getId(),
-                                transactionRef
-                            );
-                            return eventPublisherPort.publishPaymentProcessedEvent(successEvent);
-                        }));
-                } else {
-                    // 🔥 ESTO NO SE EJECUTARÁ TEMPORALMENTE
-                    String reason = "Simulated payment failure: Insufficient funds or card decline.";
-                    Payment failedPayment = savedPayment.markAsFailed(reason);
-
-                    log.warn("❌ Payment FAILED for Order ID {}. Reason: {}", orderId, reason);
-
-                    return persistencePort.update(failedPayment)
-                        .then(Mono.defer(() -> {
-                            PaymentFailedEvent failureEvent = new PaymentFailedEvent(orderId, reason);
-                            return eventPublisherPort.publishPaymentFailedEvent(failureEvent);
-                        }));
+        return ordersClient.getOrderById(orderId.toString())
+            .flatMap(order -> {
+                if (!"STOCK_RESERVED".equalsIgnoreCase(order.getStatus())) {
+                    String reason = String.format(
+                        "Order %s not payable: current status = %s (expected STOCK_RESERVED).",
+                        orderId, order.getStatus()
+                    );
+                    log.warn("🚫 [PAYMENTS] {}", reason);
+                    return publishFailure(orderId, reason);
                 }
+
+                if (order.getTotal().compareTo(requestedAmount) != 0) {
+                    String reason = String.format(
+                        "Payment amount mismatch for order %s. Expected %s, got %s.",
+                        orderId, order.getTotal(), requestedAmount
+                    );
+                    log.warn("🚫 [PAYMENTS] {}", reason);
+                    return publishFailure(orderId, reason);
+                }
+
+                Payment payment = Payment.createNew(orderId, requestedAmount, command.paymentMethod());
+                String txRef = UUID.randomUUID().toString();
+                Payment processed = payment.markAsProcessed(txRef);
+
+                log.info("✅ [PAYMENTS] Payment SUCCESS for Order {} | Tx: {}", orderId, txRef);
+
+                return persistencePort.create(processed)
+                    .flatMap(saved -> publishSuccess(orderId, processed, txRef));
             })
-            .then();
+            .onErrorResume(ex -> {
+                log.error("❌ [PAYMENTS] Error validating or processing payment for order {}: {}", orderId, ex.getMessage());
+                return publishFailure(orderId, "Error validating order or processing payment");
+            });
+    }
+
+    private Mono<Void> publishSuccess(UUID orderId, Payment payment, String txRef) {
+        PaymentProcessedEvent event = new PaymentProcessedEvent(orderId, payment.getId(), txRef);
+        log.info("📤 [PAYMENTS] Publishing PaymentProcessedEvent for orderId={}", orderId);
+        return eventPublisherPort.publishPaymentProcessedEvent(event);
+    }
+
+    private Mono<Void> publishFailure(UUID orderId, String reason) {
+        PaymentFailedEvent event = new PaymentFailedEvent(orderId, reason);
+        log.warn("📤 [PAYMENTS] Publishing PaymentFailedEvent for orderId={} reason={}", orderId, reason);
+        return eventPublisherPort.publishPaymentFailedEvent(event);
     }
 
 }
+
+
+

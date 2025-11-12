@@ -16,8 +16,7 @@ public class OrderEventsConsumer {
     private final INotificationServicePorts notificationServicePorts;
     private static final String TEST_EMAIL = "rikbarahona@gmail.com";
 
-    // 🎯 1️⃣ Order Created → Pending payment
-    @RabbitListener(id = "orderCreatedListener", queues = "order.created.queue")
+    @RabbitListener(id = "orderCreatedListener", queues = "order.created.queue.notifications")
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📩 [RECEIVED] OrderCreatedEvent | orderId={} | amount={} | userId={}",
                 event.getOrderId(), event.getAmount(), event.getUserId());
@@ -31,7 +30,6 @@ public class OrderEventsConsumer {
             .subscribe();
     }
 
-    // 🎯 2️⃣ Order Confirmed → Payment approved
     @RabbitListener(id = "orderConfirmedListener", queues = "order.confirmed.queue")
     public void handleOrderConfirmed(OrderConfirmedEvent event) {
         log.info("📩 [RECEIVED] OrderConfirmedEvent | orderId={} | userId={}",
@@ -46,7 +44,6 @@ public class OrderEventsConsumer {
             .subscribe();
     }
 
-    // 🎯 3️⃣ Payment Failed
     @RabbitListener(id = "paymentFailedListener", queues = "payment.failed.queue")
     public void handlePaymentFailed(PaymentFailedEvent event) {
         log.info("📩 [RECEIVED] PaymentFailedEvent | orderId={} | reason={}",
@@ -61,7 +58,6 @@ public class OrderEventsConsumer {
             .subscribe();
     }
 
-    // 🎯 4️⃣ Order Shipped
     @RabbitListener(id = "orderShippedListener", queues = "order.shipped.queue")
     public void handleOrderShipped(OrderShippedEvent event) {
         log.info("📩 [RECEIVED] OrderShippedEvent | orderId={} | trackingCode={}",
@@ -76,7 +72,6 @@ public class OrderEventsConsumer {
             .subscribe();
     }
 
-    // 🎯 5️⃣ Order Delivered
     @RabbitListener(id = "orderDeliveredListener", queues = "order.delivered.queue")
     public void handleOrderDelivered(OrderDeliveredEvent event) {
         log.info("📩 [RECEIVED] OrderDeliveredEvent | orderId={} | deliveryDate={}",
@@ -91,8 +86,7 @@ public class OrderEventsConsumer {
             .subscribe();
     }
 
-    // 🎯 6️⃣ User Created
-        @RabbitListener(id = "userCreatedListener", queues = "user.created.queue.notifications")
+@RabbitListener(id = "userCreatedListener", queues = "user.created.queue.notifications")
     public void handleUserCreated(UserCreatedEvent event) {
         log.info("📩 [RECEIVED] UserCreatedEvent | userId={} | email={} | name={} {} | role={}",
                 event.userId(), event.email(), event.firstName(), event.lastName(), event.role());

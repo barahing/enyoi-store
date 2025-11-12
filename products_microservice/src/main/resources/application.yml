@@ -44,3 +44,9 @@ management:
 logging:
   level:
     com.store: DEBUG
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

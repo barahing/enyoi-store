@@ -43,10 +43,13 @@ app:
     user-created-queue: user.created.queue.carts
     user-deactivated-queue: user.deactivated.queue
     user-activated-queue: user.activated.queue
-    order-confirmed-queue: order.confirmed.queue
     stock-reserved-queue: stock.reserved.queue 
     order-created-queue: order.created.queue
-
+  notifications:
+    base-url: http://localhost:8088  
+    test-recipient: rikbarahona@gmail.com  
+  reports:
+    carts-dir: D:/Enyoi - Acelera TI/enyoi-store/reports/abandoned_carts_reports
 
 eureka:
   client:
@@ -79,3 +82,8 @@ logging:
     org.springframework.amqp.rabbit.listener: DEBUG
     org.springframework.amqp.rabbit.core: DEBUG
 
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

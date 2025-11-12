@@ -236,44 +236,51 @@ public class ProductStockService implements IProductStockServicePort {
     public Mono<ProductStock> increaseStock(UUID productId, Integer quantity, UUID purchaseOrderId) {
         log.info("📈 [SERVICE] Increasing stock for product {} by {} units (Purchase Order: {})", 
                 productId, quantity, purchaseOrderId);
-        
-        if (quantity <= 0) {
+
+        if (quantity == null || quantity <= 0) {
             return Mono.error(new IllegalArgumentException("Quantity must be greater than 0"));
         }
 
-        // ⚙️ 1️⃣ Verificamos si ya se registró este evento (idempotencia)
         return historyRepository.findByProductId(productId)
-            .filter(h -> "RECEIVED".equalsIgnoreCase(h.getAction()) && purchaseOrderId.toString().equals(h.getReference()))
+            .filter(h -> "RECEIVED".equalsIgnoreCase(h.getAction()) 
+                    && purchaseOrderId.toString().equals(h.getReference()))
             .hasElements()
             .flatMap(alreadyProcessed -> {
                 if (alreadyProcessed) {
                     log.warn("♻️ [SERVICE] Duplicate StockReceivedEvent detected for product {}, skipping increase.", productId);
-                    return persistencePort.findByProductId(productId); // devolvemos el estado actual sin modificar
+                    return persistencePort.findByProductId(productId);
                 }
 
-                // ⚙️ 2️⃣ Ejecutamos el aumento real de stock
-                return persistencePort.increaseStock(productId, quantity)
-                    .flatMap(updatedStock ->
-                        // ⚙️ 3️⃣ Registramos en el histórico
-                        historyRepository.save(
-                            new com.store.inventory_microservice.domain.model.StockHistory(
-                                UUID.randomUUID(),
-                                productId,
-                                "RECEIVED",
-                                quantity,
-                                purchaseOrderId.toString(),
-                                LocalDateTime.now()
+                return persistencePort.findByProductId(productId)
+                    .switchIfEmpty(Mono.error(new StockNotFoundException("Stock not found for Product ID: " + productId)))
+                    .flatMap(stock -> {
+                        int newStockLevel = stock.getCurrentStock() + quantity;
+                        stock.setCurrentStock(newStockLevel);
+                        stock.setUpdatedAt(LocalDateTime.now());
+
+                        return persistencePort.update(stock)
+                            .flatMap(updatedStock ->
+                                historyRepository.save(
+                                    new com.store.inventory_microservice.domain.model.StockHistory(
+                                        UUID.randomUUID(),
+                                        productId,
+                                        "RECEIVED",
+                                        quantity,
+                                        purchaseOrderId.toString(),
+                                        LocalDateTime.now()
+                                    )
+                                )
+                                .thenReturn(updatedStock)
                             )
-                        )
-                        .thenReturn(updatedStock)
-                    )
-                    .doOnSuccess(updated ->
-                        log.info("✅ [SERVICE] Stock increased successfully for product {} to {} units (Purchase Order: {})",
-                                productId, updated.getCurrentStock(), purchaseOrderId)
-                    )
-                    .doOnError(error ->
-                        log.error("❌ [SERVICE] Failed to increase stock for product {}: {}", productId, error.getMessage())
-                    );
-            });
+                            .doOnSuccess(updated -> 
+                                log.info("✅ [SERVICE] Stock increased successfully for product {} → new stock: {} (Purchase Order: {})",
+                                        productId, updated.getCurrentStock(), purchaseOrderId)
+                            );
+                    });
+            })
+            .doOnError(error -> 
+                log.error("❌ [SERVICE] Failed to increase stock for product {}: {}", productId, error.getMessage(), error)
+            );
     }
+
 }

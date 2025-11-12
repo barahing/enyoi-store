@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class RabbitMQProducerConfig {
 
-    // Debe coincidir con MessagingConstants.USER_EXCHANGE
     public static final String USER_EXCHANGE_NAME = "user.exchange";
 
     @Bean
@@ -23,23 +22,19 @@ public class RabbitMQProducerConfig {
 
     @Bean
     public TopicExchange userExchange() {
-        // durable = true, autoDelete = false
         return new TopicExchange(USER_EXCHANGE_NAME, true, false);
     }
 
-    // 🔎 RabbitTemplate con converter + publisher confirms/returns para LOGGING
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(messageConverter);
 
-        // ReturnCallback: se dispara cuando el mensaje NO puede enrutar a ninguna cola
         template.setReturnsCallback(ret -> {
             log.error("❌ [USERS] RETURN (unroutable). replyCode={} replyText={} exchange={} routingKey={} message={}",
                     ret.getReplyCode(), ret.getReplyText(), ret.getExchange(), ret.getRoutingKey(), ret.getMessage());
         });
 
-        // ConfirmCallback: confirma si el broker aceptó o no el mensaje en el exchange
         template.setConfirmCallback((correlation, ack, cause) -> {
             if (ack) {
                 log.info("✅ [USERS] CONFIRM OK (accepted by exchange). correlationId={}", 

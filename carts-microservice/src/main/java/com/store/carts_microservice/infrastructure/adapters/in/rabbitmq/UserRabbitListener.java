@@ -6,8 +6,6 @@ import com.store.common.events.UserActivatedEvent;
 import com.store.carts_microservice.domain.ports.in.ICartServicePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
-
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -33,10 +31,8 @@ public class UserRabbitListener {
         log.info("👤 [CARTS] Received UserCreatedEvent for client: {}", event.userId());
 
         try {
-            // 💡 Garantiza creación o existencia de carrito antes de ACK
             cartServicePort.getActiveCartByClientId(event.userId())
                 .onErrorResume(err -> {
-                    // Si no existe, lo creamos
                     log.info("🛒 No active cart found for user {}, creating new one...", event.userId());
                     return cartServicePort.createCartForClient(event.userId());
                 })
@@ -44,7 +40,7 @@ public class UserRabbitListener {
                     log.info("✅ Cart ready for user {} → {}", event.userId(), cart.getCartId()))
                 .doOnError(e ->
                     log.error("❌ Error ensuring cart for user {}: {}", event.userId(), e.getMessage(), e))
-                .block(); // 👈 forzamos ejecución antes de ACK
+                .block(); 
         } catch (Exception e) {
             log.error("❌ [LISTENER] Failed processing UserCreatedEvent for {}: {}", event.userId(), e.getMessage(), e);
         }

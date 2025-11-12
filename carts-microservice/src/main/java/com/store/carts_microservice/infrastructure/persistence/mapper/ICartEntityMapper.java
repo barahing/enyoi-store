@@ -21,12 +21,12 @@ public abstract class ICartEntityMapper {
     @Mapping(target = "cartId", source = "id")
     @Mapping(target = "status", source = "status", qualifiedByName = "mapStatusToEnum")
     @Mapping(target = "items", ignore = true)
-    @Mapping(target = "orderId", source = "orderId") // 👈 nuevo
+    @Mapping(target = "orderId", source = "orderId") 
     public abstract Cart toDomain(CartEntity entity);
 
     @Mapping(target = "id", source = "cartId")
     @Mapping(target = "status", source = "status", qualifiedByName = "mapStatusToString")
-    @Mapping(target = "orderId", source = "orderId") // 👈 nuevo
+    @Mapping(target = "orderId", source = "orderId") 
     public abstract CartEntity toEntity(Cart domain);
 
     @Named("mapStatusToEnum")
@@ -44,7 +44,6 @@ public abstract class ICartEntityMapper {
         return status != null ? status.name() : null;
     }
     
-    // ✅ Método manual para mapear con items
     public Cart toDomainWithItems(CartEntity entity, List<CartItem> items) {
         return new Cart(
             entity.getId(),
@@ -54,7 +53,7 @@ public abstract class ICartEntityMapper {
             mapStatusToEnum(entity.getStatus()),
             entity.getCreatedDate(),
             entity.getUpdatedDate(),
-            entity.getOrderId() // 👈 nuevo parámetro
+            entity.getOrderId() 
         );
     }
 }

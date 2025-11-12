@@ -19,13 +19,11 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.payment-queue}")
     private String paymentQueueName;
 
-    // ✅ MessageConverter
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    // ✅ RabbitTemplate
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
@@ -33,7 +31,6 @@ public class RabbitMQConfig {
         return rabbitTemplate;
     }
 
-    // ✅ ListenerContainerFactory
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             ConnectionFactory connectionFactory) {
@@ -43,19 +40,16 @@ public class RabbitMQConfig {
         return factory;
     }
 
-    // ✅ Exchange
     @Bean
     public TopicExchange eventsExchange() {
         return new TopicExchange(eventsExchangeName);
     }
 
-    // ✅ Queue para recibir ProcessPaymentCommand
     @Bean
     public Queue paymentQueue() {
         return new Queue(paymentQueueName, true);
     }
 
-    // ✅ Binding para ProcessPaymentCommand
     @Bean
     public Binding paymentQueueBinding() {
         return BindingBuilder

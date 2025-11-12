@@ -2,7 +2,6 @@ package com.store.products_microservice.infrastructure.web.controller;
 
 import java.util.Map;
 import java.util.UUID;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,12 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.store.products_microservice.domain.ports.in.ICategoryUseCases;
 import com.store.products_microservice.infrastructure.web.dto.CategoryRequestDto;
 import com.store.products_microservice.infrastructure.web.dto.CategoryResponseDto;
 import com.store.products_microservice.infrastructure.web.mapper.CategoryMapperDto;
-
 import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

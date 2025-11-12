@@ -20,7 +20,6 @@ public class RabbitMQUserPublisherAdapter implements IUserEventPublisherPort {
 
     @Override
     public Mono<Void> publishUserCreated(UserCreatedEvent event) {
-        // 🔎 LOG antes de publicar
         log.info("👤 [USERS] Publishing UserCreatedEvent -> exchange='{}' key='{}' payload={}",
                 MessagingConstants.USER_EXCHANGE, MessagingConstants.USER_CREATED_ROUTING_KEY, event);
 
@@ -30,7 +29,6 @@ public class RabbitMQUserPublisherAdapter implements IUserEventPublisherPort {
             event
         );
 
-        // 🔎 LOG después de invocar convertAndSend (no implica confirmación; para eso están los callbacks de abajo)
         log.info("👤 [USERS] convertAndSend invoked (UserCreatedEvent)");
         return Mono.empty();
     }

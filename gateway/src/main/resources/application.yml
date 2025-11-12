@@ -6,66 +6,63 @@ spring:
     name: api-gateway
   
   cloud:
-    # ✅ CONFIGURACIÓN MODERNA
     gateway:
       discovery:
         locator:
-          enabled: false  # No usar auto-discovery, mejor rutas explícitas
+          enabled: false  
       routes:
         - id: user-service
-          uri: lb://user-service  # ✅ LOAD BALANCER
+          uri: lb://user-service  
           predicates:
             - Path=/api/users/**
           filters:
             - StripPrefix=0
 
         - id: inventory-microiservice
-          uri: lb://inventory-microservice  # ✅ LOAD BALANCER
+          uri: lb://inventory-microservice  
           predicates:
             - Path=/api/stock/**
           filters:
             - StripPrefix=0
 
         - id: carts-service
-          uri: lb://carts-service  # ✅ LOAD BALANCER
+          uri: lb://carts-service  
           predicates:
             - Path=/api/carts/**
           filters:
             - StripPrefix=0
 
         - id: product-service
-          uri: lb://product-service  # ✅ LOAD BALANCER
+          uri: lb://product-service  
           predicates:
             - Path=/api/products/**
           filters:
             - StripPrefix=0
 
         - id: payments-service
-          uri: lb://payments-service  # ✅ LOAD BALANCER
+          uri: lb://payments-service  
           predicates:
             - Path=/api/payments/**
           filters:
             - StripPrefix=0
         
         - id: order-service
-          uri: lb://order-service  # ✅ LOAD BALANCER
+          uri: lb://order-service  
           predicates:
             - Path=/api/orders/**
           filters:
             - StripPrefix=0
 
         - id: purchases-service
-          uri: lb://purchases-service  # ✅ LOAD BALANCER
+          uri: lb://purchases-service  
           predicates:
             - Path=/api/purchases/**
           filters:
             - StripPrefix=0
             
-    # ✅ LOAD BALANCER CONFIG
     loadbalancer:
       enabled: true
 
-# ✅ EUREKA CONFIG
 eureka:
   client:
     service-url:
@@ -77,7 +74,6 @@ eureka:
     hostname: localhost
     prefer-ip-address: false
 
-# ✅ MANAGEMENT
 management:
   endpoints:
     web:
@@ -86,7 +82,6 @@ management:
     gateway:
       enabled: true
 
-# ✅ LOGGING PARA DEBUG
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG

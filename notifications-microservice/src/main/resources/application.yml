@@ -20,7 +20,7 @@ spring:
 app:
   rabbitmq:
     queues:
-      order-created: order.created.queue
+      order-created: order.created.queue.notifications
       order-confirmed: order.confirmed.queue
       payment-failed: payment-failed-queue
       order-shipped: order.shipped.queue
@@ -65,3 +65,9 @@ logging:
     org.springframework.web: INFO
     org.springframework.amqp.rabbit: DEBUG
     org.springframework.amqp.rabbit.listener: INFO
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

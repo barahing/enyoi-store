@@ -29,12 +29,9 @@ public class RabbitEventPublisherAdapter implements IEventPublisherPort {
     private static final String KEY_ORDER_CREATED = "order.created";
     private static final String KEY_ORDER_CONFIRMED = "order.confirmed";
     private static final String KEY_ORDER_CANCELLED = "order.cancelled";
-    
-    // Keys para los comandos de la Saga (Producidos por Orders)
-    private static final String KEY_PROCESS_PAYMENT = "payment.process"; // Comando a Payment
-    private static final String KEY_RESERVE_STOCK = "stock.reserve"; // Comando a Inventory
-    private static final String KEY_RELEASE_STOCK = "stock.release"; // Comando de reversión
-
+    private static final String KEY_PROCESS_PAYMENT = "payment.process"; 
+    private static final String KEY_RESERVE_STOCK = "stock.reserve"; 
+    private static final String KEY_RELEASE_STOCK = "stock.release"; 
     private static final String KEY_ORDER_SHIPPED = "order.shipped";
     private static final String KEY_ORDER_DELIVERED = "order.delivered";
 

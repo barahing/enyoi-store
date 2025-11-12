@@ -21,5 +21,7 @@ public interface IProductStockServicePort {
     Mono<Void> confirmStockReservation(UUID orderId);
     Mono<Boolean> isQuantityAvailable(UUID productId, int quantity);
     Mono<Void> confirmStockForOrder(UUID orderId);
+    Mono<ProductStock> increaseStock(UUID productId, Integer quantity, UUID purchaseOrderId);
+    
 
 }

@@ -42,11 +42,26 @@ public class Order {
     }
 
     public void handlePaymentApproved() {
-        if (this.status != OrderStatus.STOCK_RESERVED && this.status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException("Cannot approve payment in status " + this.status);
+        switch (this.status) {
+            case STOCK_RESERVED:
+                this.status = OrderStatus.CONFIRMED;
+                break;
+
+            case PENDING:
+                this.status = OrderStatus.PAYMENT_APPROVED;
+                break;
+
+            case PAYMENT_APPROVED:
+            case CONFIRMED:
+                return;
+
+            default:
+                throw new IllegalStateException("Cannot approve payment in status " + this.status);
         }
-        this.status = OrderStatus.PAYMENT_APPROVED;
+
+        markUpdated();
     }
+
     
     public void handleStockReserved() {
         if (this.status == OrderStatus.PAYMENT_APPROVED) {

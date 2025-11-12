@@ -106,7 +106,6 @@ public class CartService implements ICartServicePort {
         .switchIfEmpty(Mono.error(new IllegalStateException("Cart is not convertible.")))
         .doOnNext(cart -> log.info("🔵 [2] Cart found and convertible. Validating stock..."))
 
-        // Validar stock para cada producto
         .flatMap(cart -> {
             Mono<Cart> validation = Mono.just(cart);
             for (CartItem item : cart.getItems()) {
@@ -122,14 +121,12 @@ public class CartService implements ICartServicePort {
             return validation;
         })
 
-        // Cambiar estado del carrito a CONVERTING
         .map(cart -> {
             cart.markAsConverting();
             return cart;
         })
         .flatMap(cartRepository::update)
 
-        // Publicar evento CartConvertedEvent
         .flatMap(cart -> {
             log.info("🔵 [3] Preparing CartConvertedEvent for client: {}", cart.getClientId());
             
@@ -159,7 +156,6 @@ public class CartService implements ICartServicePort {
                 .thenReturn(cart);
         })
 
-        // Logs finales
         .doOnSuccess(cart -> log.info("✅ [CARTS] Cart conversion completed for client: {}", cart.getClientId()))
         .doOnError(error -> log.error("❌ [ERROR] in convertCartToOrder: {}", error.getMessage()));
 }
@@ -196,7 +192,7 @@ public class CartService implements ICartServicePort {
     public Mono<Void> deleteCartByOrderId(UUID orderId) {
         log.info("🧹 Deleting cart with orderId: {}", orderId);
         return cartRepository.findByOrderId(orderId)
-            .flatMap(cart -> cartRepository.deleteById(cart.getCartId()).then()) // 👈 aclaramos que devuelve Mono<Void>
+            .flatMap(cart -> cartRepository.deleteById(cart.getCartId()).then()) 
             .then()
             .doOnSuccess(v -> log.info("✅ Cart deleted for orderId: {}", orderId))
             .doOnError(e -> log.error("❌ Error deleting cart for orderId {}: {}", orderId, e.getMessage()));
@@ -225,7 +221,6 @@ public class CartService implements ICartServicePort {
                 log.warn("⚠️ No CONVERTING cart found yet for client {} — retrying", clientId);
                 return Mono.error(new IllegalStateException("Cart not ready"));
             }))
-            // 🔁 Reintenta hasta 3 veces con 1 segundo entre cada intento
             .retryWhen(reactor.util.retry.Retry.fixedDelay(3, java.time.Duration.ofSeconds(1))
                 .filter(e -> e instanceof IllegalStateException)
                 .onRetryExhaustedThrow((spec, signal) ->
@@ -233,7 +228,7 @@ public class CartService implements ICartServicePort {
             )
             .flatMap(cart -> {
                 cart.setOrderId(orderId);
-                return cartRepository.update(cart).then(); // ✅ mantiene Mono<Void>
+                return cartRepository.update(cart).then(); 
             })
             .doOnSuccess(v -> log.info("✅ Linked cart to orderId {}", orderId))
             .doOnError(e -> log.error("❌ Failed to link cart to orderId {}: {}", orderId, e.getMessage()));
@@ -247,7 +242,6 @@ public class CartService implements ICartServicePort {
         return cartRepository.findByOrderId(orderId)
             .switchIfEmpty(Mono.error(new IllegalStateException(
                 "No CONVERTING cart found linked to orderId: " + orderId)))
-            // 🔁 reintenta 3 veces con 1s de delay si el cart aún no está vinculado
             .retryWhen(reactor.util.retry.Retry.fixedDelay(3, java.time.Duration.ofSeconds(1))
                 .filter(e -> e instanceof IllegalStateException)
                 .onRetryExhaustedThrow((spec, signal) ->
@@ -259,10 +253,8 @@ public class CartService implements ICartServicePort {
 
                 log.info("🧾 Found cart {} (clientId={}) linked to order {}. Deleting...", cartId, clientId, orderId);
 
-                // 1️⃣ Borrar carrito CONVERTING
                 return cartRepository.deleteById(cartId)
                     .then(
-                        // 2️⃣ Crear nuevo carrito vacío ACTIVE
                         createCartForClient(clientId)
                             .doOnSuccess(newCart ->
                                 log.info("🆕 New ACTIVE cart {} created for client {}", newCart.getCartId(), clientId))

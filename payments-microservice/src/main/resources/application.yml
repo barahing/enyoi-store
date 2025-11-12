@@ -29,6 +29,9 @@ app:
   rabbitmq:
     payment-queue: payment-queue 
     exchange: store.events
+  services:
+    orders:
+      url: http://localhost:8080/api/orders
 
 eureka:
   client:
@@ -55,3 +58,9 @@ management:
       show-details: always
       probes:
         enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

@@ -51,16 +51,31 @@ management:
 app:
   rabbitmq:
     exchange: store.events
-    orders-saga-queue: orders-saga-queue
-    payment-processed-queue: order-payment-processed-queue
-    payment-failed-queue: payment-failed-queue
-    stock-reserved-queue: stock-reserved-queue
-    stock-reservation-failed-queue: stock-reservation-failed-queue 
-    cart-converted-queue: cart-converted-queue
-    payment-queue: payment-queue
-    order-created-key: order.created
-    order-confirmed-key: order.confirmed
-    order-cancelled-key: order.cancelled
+
+    payment-processed-queue: payment.processed.queue.order
+    payment-failed-queue: payment.failed.queue.order
+    stock-reserved-queue: stock.reserved.queue.order
+    stock-reservation-failed-queue: stock.failed.queue.order
+    cart-converted-queue: cart.converted.queue.order
+    payment-queue: payment.command.queue.order
+
+    payment-processed-key: payment.processed
+    payment-failed-key: payment.failed
+    stock-reserved-key: stock.reserved
+    stock-reservation-failed-key: stock.failed
+    cart-converted-key: cart.converted.event
     process-payment-key: payment.process
-    reserve-stock-key: stock.reserve
-    release-stock-key: stock.release
+    order-shipped-key: order.shipped
+    order-delivered-key: order.delivered
+  
+  reports:
+    sales-dir: D:\Enyoi - Acelera TI\enyoi-store\reports\sales_reports
+  notifications:
+    base-url: http://localhost:8088
+    test-recipient: rikbarahona@gmail.com
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui

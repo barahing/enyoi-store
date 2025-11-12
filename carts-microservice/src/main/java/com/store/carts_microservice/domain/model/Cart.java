@@ -25,12 +25,11 @@ public class Cart {
     private LocalDateTime updatedDate;
     private UUID orderId;
 
-    // Constructor principal
     public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total,
                 CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate, UUID orderId) {
         this.cartId = cartId;
         this.clientId = clientId;
-        this.items = new ArrayList<>(items); // Copia defensiva
+        this.items = new ArrayList<>(items); 
         this.total = total;
         this.status = status;
         this.createdDate = createdDate;
@@ -38,13 +37,11 @@ public class Cart {
         this.orderId = orderId;
     }
 
-    // Constructor sin orderId (para backward compatibility con la factory)
     public Cart(UUID cartId, UUID clientId, List<CartItem> items, BigDecimal total,
                 CartStatus status, LocalDateTime createdDate, LocalDateTime updatedDate) {
         this(cartId, clientId, items, total, status, createdDate, updatedDate, null);
     }
 
-    // ✅ Método para reasignar items después de cargar desde BD
     public void setItems(List<CartItem> items) {
         this.items = new ArrayList<>(items);
         recalculateTotal();

@@ -29,7 +29,6 @@ public class RabbitMQEventPublisher implements ICartEventPublisherPort {
                 System.out.println("🔄 RabbitTemplate: " + rabbitTemplate);
                 System.out.println("📊 Connection Factory: " + rabbitTemplate.getConnectionFactory());
                 
-                // Verificar si el exchange existe
                 try {
                     rabbitTemplate.execute(channel -> {
                         System.out.println("✅ Channel created successfully");

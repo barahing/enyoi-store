@@ -1,6 +1,5 @@
 package com.store.purchases_microservice.infrastructure.web.controller;
 
-import com.store.purchases_microservice.domain.model.PurchaseOrder;
 import com.store.purchases_microservice.domain.ports.in.IPurchaseServicePorts;
 import com.store.purchases_microservice.infrastructure.web.dto.PurchaseRequestDTO;
 import com.store.purchases_microservice.infrastructure.web.dto.PurchaseResponseDTO;
@@ -22,9 +21,6 @@ public class PurchaseController {
     private final IPurchaseServicePorts purchaseService;
     private final PurchaseDtoMapper mapper;
 
-    /**
-     * 🧾 Crea una nueva orden de compra
-     */
     @PostMapping
     public Mono<PurchaseResponseDTO> createPurchaseOrder(@Valid @RequestBody PurchaseRequestDTO request) {
         log.info("🧾 [PURCHASES] Creating new purchase for productId={} qty={}",
@@ -39,21 +35,15 @@ public class PurchaseController {
                 .map(mapper::toResponseDto);
     }
 
-    /**
-     * 📦 Marca una orden como recibida
-     */
     @PutMapping("/{purchaseOrderId}/receive")
-    public Mono<PurchaseResponseDTO> markAsReceived(@PathVariable UUID purchaseOrderId) {
+    public Mono<PurchaseResponseDTO> markAsReceived(@PathVariable("purchaseOrderId") UUID purchaseOrderId) {
         log.info("📦 [PURCHASES] Receiving purchase order {}", purchaseOrderId);
         return purchaseService.receivePurchaseOrder(purchaseOrderId)
                 .map(mapper::toResponseDto);
     }
 
-    /**
-     * 🔍 Consulta una orden por ID
-     */
     @GetMapping("/{purchaseOrderId}")
-    public Mono<PurchaseResponseDTO> getById(@PathVariable UUID purchaseOrderId) {
+    public Mono<PurchaseResponseDTO> getById(@PathVariable ("purchaseOrderId") UUID purchaseOrderId) {
         log.info("🔍 [PURCHASES] Fetching purchase order {}", purchaseOrderId);
         return purchaseService.receivePurchaseOrder(purchaseOrderId)
                 .map(mapper::toResponseDto);

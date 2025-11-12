@@ -8,6 +8,6 @@ import reactor.core.publisher.Mono;
 
 public interface IUserEventPublisherPort {
     Mono<Void> publishUserCreated(UserCreatedEvent event);
-    Mono<Void> publishUserDeactivated(UserDeactivatedEvent event);  // NUEVO
-    Mono<Void> publishUserActivated(UserActivatedEvent event);      // NUEVO
+    Mono<Void> publishUserDeactivated(UserDeactivatedEvent event);  
+    Mono<Void> publishUserActivated(UserActivatedEvent event);      
 }

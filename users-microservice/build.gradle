@@ -31,7 +31,7 @@ ext {
 }
 
 dependencies {
-    implementation 'com.store:store-common:2.1.0'
+    implementation 'com.store:store-common:3.1.3'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -59,4 +59,11 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.annotationProcessorPath = configurations.annotationProcessor
+    options.compilerArgs += [
+        '-Amapstruct.defaultComponentModel=spring'
+    ]
 }

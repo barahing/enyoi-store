@@ -53,13 +53,11 @@ public class ProductCatalogAdapter implements IProductCatalogPort {
                 .retrieve()
                 .onStatus(status -> status.equals(HttpStatus.NOT_FOUND),
                           clientResponse -> {
-                            // Cuando el producto no existe (404), devuelve Mono.empty()
                             log.warn("Product with ID {} not found (404) during retrieval.", productId);
                             return Mono.empty();
                           })
                 .bodyToMono(ProductDto.class)
                 .onErrorResume(e -> {
-                    // Maneja errores de red o del servidor (e.g., 5xx, timeout)
                     log.error("Unexpected error retrieving Product details for ID {}: {}", productId, e.getMessage());
                     return Mono.empty();
                 });

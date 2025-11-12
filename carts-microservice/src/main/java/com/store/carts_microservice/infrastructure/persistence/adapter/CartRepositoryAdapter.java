@@ -34,7 +34,7 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
     @Override
     public Mono<Cart> create(Cart cart) {
         CartEntity cartEntity = cartMapper.toEntity(cart);
-        cartEntity.setId(null); // Forzar INSERT
+        cartEntity.setId(null); 
 
         return cartRepository.save(cartEntity)
             .flatMap(savedCart -> {
@@ -135,8 +135,6 @@ public class CartRepositoryAdapter implements ICartRepositoryPort {
             .doOnSuccess(v -> log.info("✅ Linked cart to orderId {}", orderId))
             .doOnError(e -> log.error("❌ Failed to link cart to orderId {}: {}", orderId, e.getMessage()));
     }
-
-    // ✅ Métodos auxiliares
 
     private CartItemEntity toCartItemEntity(CartItem domain, UUID cartId) {
         CartItemEntity entity = new CartItemEntity();

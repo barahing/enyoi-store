@@ -22,7 +22,7 @@ public class PaymentRepositoryAdapter implements IPaymentRepositoryPort {
         return Mono.just(payment)
             .map(mapper::toEntity)
             .flatMap(entity -> {
-                entity.setId(null); // fuerza INSERT
+                entity.setId(null); 
                 return r2dbcRepository.save(entity);
             })
             .map(mapper::toDomain);
@@ -32,7 +32,7 @@ public class PaymentRepositoryAdapter implements IPaymentRepositoryPort {
     public Mono<Payment> update(Payment payment) {
         return Mono.just(payment)
             .map(mapper::toEntity)
-            .flatMap(r2dbcRepository::save) // UPDATE porque tiene id
+            .flatMap(r2dbcRepository::save) 
             .map(mapper::toDomain);
     }
 

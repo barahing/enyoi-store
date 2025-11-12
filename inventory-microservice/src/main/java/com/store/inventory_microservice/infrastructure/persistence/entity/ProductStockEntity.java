@@ -8,13 +8,13 @@ import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Table;
 
-import lombok.Getter; // Reemplaza @Data
-import lombok.Setter; // Reemplaza @Data
-import lombok.NoArgsConstructor; // Necesario para R2DBC/Spring Data
+import lombok.Getter; 
+import lombok.Setter; 
+import lombok.NoArgsConstructor; 
 
 @Getter 
 @Setter
-@NoArgsConstructor // Reintroduce el constructor vacío requerido por Spring Data
+@NoArgsConstructor 
 @Table("product_stock")
 public class ProductStockEntity implements Persistable<UUID> {
 
@@ -25,35 +25,29 @@ public class ProductStockEntity implements Persistable<UUID> {
     private int reservedStock;
     private LocalDateTime updatedAt;
 
-    // Campo Transient, solo para tracking del estado.
     @Transient 
-    private boolean stateNew; // Inicialización removida aquí.
+    private boolean stateNew; 
 
-    // Método de Fábrica para CREACIÓN (Siempre fuerza INSERT)
     public static ProductStockEntity newEntity(UUID productId, int currentStock, int reservedStock) {
         ProductStockEntity entity = new ProductStockEntity();
         entity.productId = productId;
         entity.currentStock = currentStock;
         entity.reservedStock = reservedStock;
         entity.updatedAt = null;
-        entity.setNew(true); // Usamos el setter explícito
+        entity.setNew(true); 
         return entity;
     }
-
-    // --- Métodos de Persistable ---
 
     @Override
     public UUID getId() {
         return productId;
     }
 
-    // Devuelve el estado interno.
     @Override
     public boolean isNew() {
         return this.stateNew;
     }
 
-    // Setter utilizado por el Adaptador/R2DBC para forzar el estado.
     public void setNew(boolean isNew) {
         this.stateNew = isNew;
     }

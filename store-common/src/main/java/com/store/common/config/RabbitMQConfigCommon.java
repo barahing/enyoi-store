@@ -1,11 +1,14 @@
 package com.store.common.config;
 
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@Configuration
-public class RabbitMQConfig {
+
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnMissingBean(name = "rabbitMQConfigCommon")
+public class RabbitMQConfigCommon {
 
     @Bean
     public TopicExchange productExchange() {

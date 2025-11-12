@@ -28,7 +28,6 @@ public class InventoryEventsConsumer {
                 "Simulated Supplier Inc.", 
                 event.getProductId(), 
                 quantityToOrder, 
-                // Costo simulado
                 java.math.BigDecimal.valueOf(10.00))
             .subscribeOn(Schedulers.boundedElastic())
             .doOnSuccess(order -> log.info("Successfully created Purchase Order {} to replenish stock for Product ID: {}", order.getId(), event.getProductId()))

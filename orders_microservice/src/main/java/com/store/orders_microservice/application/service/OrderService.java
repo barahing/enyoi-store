@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
-
 import com.store.common.commands.ProcessPaymentCommand;
 import com.store.common.commands.ReserveStockCommand;
 import com.store.common.dto.ProductStockDTO;
@@ -24,7 +22,6 @@ import com.store.orders_microservice.domain.model.OrderStatus;
 import com.store.orders_microservice.domain.ports.in.IOrderServicePort;
 import com.store.orders_microservice.domain.ports.out.IEventPublisherPort;
 import com.store.orders_microservice.domain.ports.out.IOrderRepositoryPort;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -75,7 +72,6 @@ public class OrderService implements IOrderServicePort {
                     productList
                 );
 
-                // Publicar OrderCreatedEvent y ReserveStockCommand
                 return eventPublisher.publishOrderCreatedEvent(orderCreatedEvent)
                     .then(Mono.defer(() -> {
                         ReserveStockCommand reserveCommand = new ReserveStockCommand(
@@ -126,10 +122,6 @@ public class OrderService implements IOrderServicePort {
         return getOrderById(orderId);
     }
 
-    /**
-     * 🚚 Cuando la orden se marca como enviada (SHIPPED),
-     * se publica el evento OrderShippedEvent.
-     */
     @Override
     public Mono<Order> shipOrder(UUID orderId) {
         return updateOrderStatusByEvent(orderId, Order::ship)
@@ -145,10 +137,6 @@ public class OrderService implements IOrderServicePort {
             .doOnSuccess(order -> log.info("📦 Order {} marked as SHIPPED", order.getOrderId()));
     }
 
-    /**
-     * 📬 Cuando la orden se marca como entregada (DELIVERED),
-     * se publica el evento OrderDeliveredEvent.
-     */
     @Override
     public Mono<Order> deliverOrder(UUID orderId) {
         return updateOrderStatusByEvent(orderId, Order::deliver)
@@ -169,7 +157,7 @@ public class OrderService implements IOrderServicePort {
         return getOrderById(orderId)
             .flatMap(order -> {
                 try {
-                    order.cancel(); // ahora dentro del flujo reactivo
+                    order.cancel(); 
                     return orderRepository.save(order)
                         .flatMap(savedOrder -> eventPublisher.publishOrderCancelledEvent(
                             new OrderCancelledEvent(
@@ -181,7 +169,7 @@ public class OrderService implements IOrderServicePort {
                             )
                         ).thenReturn(savedOrder));
                 } catch (Exception e) {
-                    return Mono.error(e); // manejable dentro del flujo Reactor
+                    return Mono.error(e); 
                 }
             })
             .doOnSuccess(order -> log.info("🚨 Order {} cancelled successfully", order.getOrderId()))

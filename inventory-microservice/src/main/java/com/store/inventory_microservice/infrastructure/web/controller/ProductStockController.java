@@ -19,6 +19,7 @@ import com.store.inventory_microservice.infrastructure.web.dto.ProductStockRespo
 import com.store.inventory_microservice.infrastructure.web.mapper.IProductStockMapperDto;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -26,6 +27,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/stock")
 @RequiredArgsConstructor
 @Validated
+@Slf4j
 public class ProductStockController {
     
     private final IProductStockServicePort stockServicePort;
@@ -72,4 +74,23 @@ public class ProductStockController {
             .map(stock -> stock.getCurrentStock() >= quantity)
             .defaultIfEmpty(false);
     }
+
+/*
+    @PutMapping("/{productId}/increase")
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<ProductStockResponseDto> increaseStock(
+        @PathVariable("productId") UUID productId,
+        @RequestBody @Validated IncreaseStockRequestDto requestDto
+    ) {
+        return stockServicePort.increaseStock(productId, requestDto.getQuantity(), requestDto.getPurchaseOrderId())
+            .map(stockMapper::toDto)
+            .doOnSuccess(stock -> 
+                log.info("✅ [CONTROLLER] Stock increased for product {} by {} (PurchaseOrder: {})",
+                    productId, requestDto.getQuantity(), requestDto.getPurchaseOrderId()))
+            .doOnError(error -> 
+                log.error("❌ [CONTROLLER] Failed to increase stock for product {}: {}", 
+                    productId, error.getMessage()));
+    }
+*/
+
 }    

@@ -2,11 +2,9 @@ package com.store.inventory_microservice.infrastructure.persistence.adapter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.store.inventory_microservice.domain.exception.DuplicateReservationException;
 import com.store.inventory_microservice.domain.model.ProductStock;
 import com.store.inventory_microservice.domain.model.StockReservation;
@@ -17,7 +15,6 @@ import com.store.inventory_microservice.infrastructure.persistence.mapper.IProdu
 import com.store.inventory_microservice.infrastructure.persistence.mapper.IStockReservationMapper;
 import com.store.inventory_microservice.infrastructure.persistence.repository.IProductStockR2dbcRepository;
 import com.store.inventory_microservice.infrastructure.persistence.repository.IStockReservationR2dbcRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -32,10 +29,6 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
     private final IStockReservationR2dbcRepository reservationRepository;
     private final IProductStockMapper stockMapper;
     private final IStockReservationMapper reservationMapper;
-
-    // ---------------------------------------------------------------------
-    // PRODUCT STOCK
-    // ---------------------------------------------------------------------
 
     @Override
     @Transactional
@@ -56,7 +49,6 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
     public Mono<ProductStock> update(ProductStock stock) {
         log.info("🔄 [ADAPTER] Updating stock for product {}", stock.getProductId());
         
-        // VUELVE A LA VERSIÓN ORIGINAL que SÍ funcionaba
         ProductStockEntity entity = stockMapper.toEntity(stock);
         
         return stockRepository.save(entity)
@@ -75,10 +67,6 @@ public class ProductStockPersistenceAdapter implements IProductStockPersistenceP
         return stockRepository.findAll()
             .map(stockMapper::toDomain);
     }
-
-    // ---------------------------------------------------------------------
-    // STOCK RESERVATIONS
-    // ---------------------------------------------------------------------
 
     @Override
     @Transactional

@@ -27,7 +27,7 @@ public class PurchaseOrderPersistenceAdapter implements IPurchaseOrderPersistenc
     public Mono<PurchaseOrder> update(PurchaseOrder purchaseOrder) {
         return Mono.just(purchaseOrder)
             .map(mapper::toEntity)
-            .flatMap(repository::save) // save actualiza si existe
+            .flatMap(repository::save) 
             .map(mapper::toDomain);
     }
 

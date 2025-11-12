@@ -27,15 +27,22 @@ spring:
 
 app:
   rabbitmq:
-    exchange: store.events
-    order-created-queue: order-created-queue
-    release-stock-command-queue: release-stock-command-queue
-    payment-processed-queue: inventory-payment-processed-queue 
-    reserve-stock-command-queue: reserve-stock-command-queue  
-    stock-reserved-key: stock.reserved
-    stock-reservation-failed-key: stock.failed
-    order-cancelled-queue: order-cancelled-queue
-    stock-received-queue: stock-received-queue
+    exchange: store.events       
+    order-created-queue: order.created.queue.inventory
+    release-stock-command-queue: release.stock.command.queue
+    payment-processed-queue: payment.processed.queue.inventory
+    reserve-stock-command-queue: reserve.stock.command.queue
+    order-cancelled-queue: order.cancelled.queue.inventory
+    stock-received-queue: stock.received.queue.inventory
+    low-stock-alert-key: inventory.lowstock.alert  
+
+    order-created-key: order.created
+    stock-reserve-key: stock.reserve
+    stock-release-key: stock.release
+    payment-processed-key: payment.processed
+    order-cancelled-key: order.cancelled
+    stock-received-key: stock.received   
+
 
   product-service:
     url: http://localhost:8082
@@ -64,3 +71,9 @@ management:
       show-details: always
       probes:
         enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui
