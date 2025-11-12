@@ -1,0 +1,38 @@
+plugins {
+    id 'java'                                       // <--- 👈 Este faltaba
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.store'
+version = '0.0.1-SNAPSHOT'
+description = 'Auth Service - Enyoi Store'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.store:store-common:3.2.1'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    //runtimeOnly 'org.postgresql:postgresql'
+    //runtimeOnly 'org.postgresql:r2dbc-postgresql'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.projectreactor:reactor-test'
+
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

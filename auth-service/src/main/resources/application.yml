@@ -1,0 +1,37 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: auth-service
+
+  main:
+    allow-bean-definition-overriding: true
+
+  # 🔧 Base de datos (dejamos listo para activarlo después)
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/usersdb   # cambiar si tu DB se llama distinto
+    username: postgres
+    password: postgres
+
+  sql:
+    init:
+      mode: never
+
+  # Desactiva la conexión si aún no tienes DB (comentando este bloque)
+  # r2dbc:
+  #   url: r2dbc:postgresql://localhost:5432/usersdb
+  #   username: postgres
+  #   password: postgres
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    org.springframework.r2dbc: WARN
+    org.springframework.security: INFO
+    com.store.auth_service: DEBUG
